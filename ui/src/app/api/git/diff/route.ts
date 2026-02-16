@@ -67,6 +67,15 @@ export async function GET(req: Request) {
   }
 
   try {
+    await execAsync("git rev-parse --git-dir", { cwd });
+  } catch {
+    return NextResponse.json(
+      { error: `Not a git repository: ${cwd}` },
+      { status: 422 },
+    );
+  }
+
+  try {
     const [{ stdout: tracked }, untracked] = await Promise.all([
       execAsync("git diff HEAD", { cwd, maxBuffer: MAX_BUFFER }),
       untrackedDiffs(cwd),

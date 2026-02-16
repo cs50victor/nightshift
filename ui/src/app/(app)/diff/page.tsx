@@ -7,21 +7,21 @@ import { useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader } from "@/components/ui/loader";
 import { useBreadcrumb } from "@/contexts/breadcrumb-context";
-import { useCurrentProject, useGitDiff } from "@/hooks/use-opencode";
+import { useGitDiff, useProjectPath } from "@/hooks/use-opencode";
 
 export default function DiffPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const path = searchParams.get("path");
-  const { data: project } = useCurrentProject();
+  const { data: projectPath } = useProjectPath();
   const { data, error, isLoading, mutate } = useGitDiff(path);
   const { setPageTitle } = useBreadcrumb();
 
   useEffect(() => {
-    if (!path && project?.worktree) {
-      router.replace(`/diff?path=${encodeURIComponent(project.worktree)}`);
+    if (!path && projectPath?.path) {
+      router.replace(`/diff?path=${encodeURIComponent(projectPath.path)}`);
     }
-  }, [path, project?.worktree, router]);
+  }, [path, projectPath?.path, router]);
 
   useEffect(() => {
     setPageTitle("Git Diff");

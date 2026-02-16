@@ -75,7 +75,7 @@ pub async fn run() -> Result<()> {
             tracing::error!("opencode exited: {:?}, daemon will exit", status);
             std::process::exit(1);
         }
-        result = crate::proxy::serve(OPENCODE_PORT, PROXY_PORT) => {
+        result = crate::proxy::serve(OPENCODE_PORT, PROXY_PORT, data_dir.to_string_lossy().into_owned()) => {
             tracing::error!("proxy server failed: {:?}", result);
             child.kill().await.ok();
             std::process::exit(1);

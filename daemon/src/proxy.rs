@@ -13,7 +13,17 @@ type ProxyBody = Either<Incoming, Full<Bytes>>;
 async fn handle(
     mut req: Request<Incoming>,
     opencode_port: u16,
+    project_path: &str,
 ) -> Result<Response<ProxyBody>, Infallible> {
+    if req.uri().path() == "/project/absolute_path" {
+        let body = format!(r#"{{"path":"{}"}}"#, project_path);
+        return Ok(Response::builder()
+            .status(StatusCode::OK)
+            .header("content-type", "application/json")
+            .body(Either::Right(Full::new(Bytes::from(body))))
+            .unwrap());
+    }
+
     let is_upgrade = req.headers().contains_key(hyper::header::UPGRADE);
     let on_client_upgrade = if is_upgrade {
         Some(hyper::upgrade::on(&mut req))
@@ -74,7 +84,7 @@ async fn forward(mut req: Request<Incoming>, opencode_port: u16) -> Result<Respo
     Ok(resp)
 }
 
-pub async fn serve(opencode_port: u16, listen_port: u16) -> Result<()> {
+pub async fn serve(opencode_port: u16, listen_port: u16, project_path: String) -> Result<()> {
     let listener = TcpListener::bind(("0.0.0.0", listen_port))
         .await
         .with_context(|| format!("failed to bind proxy to :{listen_port}"))?;
@@ -83,10 +93,12 @@ pub async fn serve(opencode_port: u16, listen_port: u16) -> Result<()> {
     loop {
         let (stream, _) = listener.accept().await?;
         let io = TokioIo::new(stream);
+        let path = project_path.clone();
         tokio::spawn(async move {
             let svc = service_fn(move |req: Request<Incoming>| {
                 let port = opencode_port;
-                async move { handle(req, port).await }
+                let p = path.clone();
+                async move { handle(req, port, &p).await }
             });
             if let Err(e) = hyper::server::conn::http1::Builder::new()
                 .serve_connection(io, svc)

@@ -4,7 +4,8 @@ import useSWR from "swr";
 const fetcher = async (url: string) => {
   const res = await fetch(url);
   if (!res.ok) {
-    throw new Error(`Request failed: ${res.status}`);
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.error || `Request failed: ${res.status}`);
   }
   return res.json();
 };
@@ -39,6 +40,10 @@ export function useHealth() {
 
 export function useCurrentProject() {
   return useSWR("/api/opencode/project/current", fetcher);
+}
+
+export function useProjectPath() {
+  return useSWR<{ path: string }>("/api/opencode/project/absolute_path", fetcher);
 }
 
 export function useCreateSession() {
