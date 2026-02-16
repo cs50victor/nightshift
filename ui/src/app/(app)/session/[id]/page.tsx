@@ -312,7 +312,7 @@ export default function SessionPage() {
 
       try {
         const response = await fetch(
-          `/api/opencode/session/${sessionId}/prompt`,
+          `/api/opencode/session/${sessionId}/prompt_async`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },

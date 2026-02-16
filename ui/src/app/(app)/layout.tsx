@@ -41,7 +41,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           setNodeCookie(nodes[0].url);
         }
 
-        const health = await fetch("/api/opencode/config");
+        const health = await fetch("/api/opencode/global/health");
         if (!health.ok) {
           setError("Node unreachable");
           setLoading(false);

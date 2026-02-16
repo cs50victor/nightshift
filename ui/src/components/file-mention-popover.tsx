@@ -159,7 +159,7 @@ export function FileMentionPopover({
       setLoading(true);
       try {
         const response = await fetch(
-          `/api/opencode/file/search?q=${encodeURIComponent(searchQuery)}`,
+          `/api/opencode/find/file?query=${encodeURIComponent(searchQuery)}`,
           { signal: controller.signal },
         );
         if (response.ok) {

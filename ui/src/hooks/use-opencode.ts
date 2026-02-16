@@ -14,7 +14,7 @@ export function useNodes() {
 }
 
 export function useSessions() {
-  return useSWR("/api/opencode/session/list", fetcher);
+  return useSWR("/api/opencode/session", fetcher);
 }
 
 export function useSession(id: string | null) {
@@ -30,7 +30,7 @@ export function useProviders() {
 }
 
 export function useAgents() {
-  return useSWR("/api/opencode/app/agent/list", fetcher);
+  return useSWR("/api/opencode/agent", fetcher);
 }
 
 export function useHealth() {
