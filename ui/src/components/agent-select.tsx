@@ -1,5 +1,4 @@
 "use client";
-import { InformationCircleIcon } from "@heroicons/react/24/outline";
 import type { Agent } from "@opencode-ai/sdk";
 import { useEffect } from "react";
 import {
@@ -9,11 +8,6 @@ import {
   SelectLabel,
   SelectTrigger,
 } from "@/components/ui/select";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { useAgents } from "@/hooks/use-opencode";
 import { useAgentStore } from "@/stores/agent-store";
 
@@ -27,7 +21,7 @@ function isValidAgent(agents: Agent[], name?: string) {
 }
 
 function getDefaultAgentName(agents: Agent[]) {
-  return agents.find((agent) => agent.name === "plan")?.name ?? agents[0]?.name;
+  return agents.find((agent) => agent.name === "build")?.name ?? agents[0]?.name;
 }
 
 export function AgentSelect({ sessionId }: AgentSelectProps) {
@@ -65,23 +59,12 @@ export function AgentSelect({ sessionId }: AgentSelectProps) {
           <SelectItem id={agent.name} textValue={agent.name}>
             <SelectLabel>{agent.name}</SelectLabel>
             {agent.description && (
-              <div className="col-start-2 row-start-2 flex items-center gap-2 text-muted-fg text-xs">
-                <span className="truncate max-w-[200px]">
-                  {agent.description}
-                </span>
-                <Tooltip delay={0}>
-                  <TooltipTrigger
-                    aria-label={`${agent.name} description`}
-                    className="p-0.5 text-muted-fg hover:text-fg"
-                    onPress={() => {}}
-                  >
-                    <InformationCircleIcon className="size-4" />
-                  </TooltipTrigger>
-                  <TooltipContent placement="right" className="max-w-xs">
-                    {agent.description}
-                  </TooltipContent>
-                </Tooltip>
-              </div>
+              <span
+                className="col-start-2 row-start-2 truncate max-w-[200px] text-muted-fg text-xs"
+                title={agent.description}
+              >
+                {agent.description}
+              </span>
             )}
           </SelectItem>
         )}

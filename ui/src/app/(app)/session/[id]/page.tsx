@@ -230,7 +230,11 @@ export default function SessionPage() {
 
   useEffect(() => {
     if (currentSession?.title) {
-      setPageTitle(currentSession.title);
+      const formatted = currentSession.title.replace(
+        /\d{4}-\d{2}-\d{2}T[\d:.]+Z$/,
+        (iso) => new Date(iso).toLocaleString(),
+      );
+      setPageTitle(formatted);
     }
     return () => setPageTitle(null);
   }, [currentSession?.title, setPageTitle]);
@@ -318,7 +322,7 @@ export default function SessionPage() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               parts: [{ type: "text", text: messageText }],
-              model: selectedAgent ? undefined : selectedModel,
+              model: selectedModel.providerID ? selectedModel : undefined,
               agent: selectedAgent,
             }),
           },
@@ -536,7 +540,7 @@ export default function SessionPage() {
               <AgentSelect sessionId={sessionId} />
             </div>
             <div className="flex items-center justify-between gap-2 sm:justify-end">
-              {!selectedAgent && <ModelSelect />}
+              <ModelSelect />
               <Button
                 type="submit"
                 isDisabled={!input.trim()}

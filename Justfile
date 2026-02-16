@@ -20,7 +20,7 @@ dev:
 [doc('Run daemon in dev mode')]
 [group('dev')]
 dev-daemon:
-    cargo run --manifest-path daemon/Cargo.toml -- daemon
+    NIGHTSHIFT_NO_UPDATE=1 cargo run --manifest-path daemon/Cargo.toml -- daemon
 
 [doc('Run API server (bun)')]
 [group('dev')]

@@ -1,7 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server";
 
 export function middleware(req: NextRequest) {
-  const nodeUrl = req.cookies.get("nightshift-node-url")?.value;
+  const raw = req.cookies.get("nightshift-node-url")?.value;
+  const nodeUrl = raw ? decodeURIComponent(raw) : undefined;
   if (!nodeUrl) {
     return NextResponse.json({ error: "No node selected" }, { status: 503 });
   }

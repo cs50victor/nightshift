@@ -46,10 +46,15 @@ pub async fn run() -> Result<()> {
         });
     }
 
+    let home = std::env::var("HOME").unwrap_or_else(|_| ".".into());
+    let data_dir = std::path::PathBuf::from(home).join(".nightshift");
+    std::fs::create_dir_all(&data_dir)?;
+
     // NOTE(victor): No supervisor. If opencode dies, the daemon exits.
     // launchd/systemd restarts the daemon, which restarts opencode.
     let mut child = tokio::process::Command::new("opencode")
         .args(["serve", "--port", &OPENCODE_PORT.to_string()])
+        .current_dir(&data_dir)
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
         .spawn()?;

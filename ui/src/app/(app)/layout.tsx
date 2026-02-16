@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { AppSidebarNav } from "@/components/app-sidebar-nav";
 import { BreadcrumbProvider } from "@/contexts/breadcrumb-context";
+import { useModelStore } from "@/stores/model-store";
 
 interface Node {
   id: string;
@@ -46,6 +47,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           setError("Node unreachable");
           setLoading(false);
           return;
+        }
+
+        const providersRes = await fetch("/api/opencode/config/providers");
+        if (providersRes.ok) {
+          const data = await providersRes.json();
+          const firstProvider = data.providers?.[0];
+          const firstModelId = Object.keys(firstProvider?.models ?? {})[0];
+          if (firstProvider && firstModelId) {
+            useModelStore
+              .getState()
+              .setModelFromDefault(`${firstProvider.id}/${firstModelId}`);
+          }
         }
       } catch {
         setError("Node unreachable");

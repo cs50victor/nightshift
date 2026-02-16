@@ -8,8 +8,8 @@ export interface SelectedModel {
 }
 
 const DEFAULT_MODEL: SelectedModel = {
-  providerID: "opencode",
-  modelID: "grok-code",
+  providerID: "",
+  modelID: "",
 };
 
 function parseModelKey(key: string): SelectedModel {
