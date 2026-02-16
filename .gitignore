@@ -5,3 +5,4 @@ target
 *.lock
 !Cargo.lock
 *.tsbuildinfo
+.agents 
