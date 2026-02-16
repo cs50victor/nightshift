@@ -1,40 +1,14 @@
 "use client";
+import type {
+  Message,
+  Part,
+  TextPart,
+  ToolPart,
+  ToolState,
+} from "@opencode-ai/sdk";
 import useSWR, { mutate } from "swr";
 
-export interface Message {
-  id: string;
-  sessionID: string;
-  role: "user" | "assistant" | "system";
-  time: { created: number };
-  agent: string;
-  model: { providerID: string; modelID: string };
-}
-
-export interface TextPart {
-  id: string;
-  sessionID: string;
-  messageID: string;
-  type: "text";
-  text: string;
-}
-
-export interface ToolState {
-  status: "pending" | "running" | "completed" | "error";
-  input?: Record<string, unknown>;
-  output?: unknown;
-}
-
-export interface ToolPart {
-  id: string;
-  callID?: string;
-  sessionID: string;
-  messageID: string;
-  type: "tool";
-  tool?: string;
-  state: ToolState;
-}
-
-export type Part = TextPart | ToolPart;
+export type { Message, Part, TextPart, ToolPart, ToolState };
 
 export interface MessageWithParts {
   info: Message;

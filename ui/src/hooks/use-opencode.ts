@@ -41,10 +41,6 @@ export function useCurrentProject() {
   return useSWR("/api/opencode/project/current", fetcher);
 }
 
-export function useHostname() {
-  return useSWR("/api/system/hostname", fetcher);
-}
-
 export function useCreateSession() {
   return async (title?: string) => {
     const res = await fetch("/api/opencode/session", {
