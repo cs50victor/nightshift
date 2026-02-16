@@ -39,7 +39,6 @@ export default function EmptyState() {
   return (
     <div className="flex h-full items-center justify-center">
       <div className="text-center max-w-md">
-        <h2 className="text-2xl font-medium text-fg mb-2">Nightshift</h2>
         <p className="text-muted-fg mb-6">
           Create a new session to get started.
         </p>

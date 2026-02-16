@@ -15,7 +15,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body>
+      <body className="tracking-tight">
         <Providers>
           <div className="page">
             <section className="content">{children}</section>

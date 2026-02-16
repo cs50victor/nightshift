@@ -161,7 +161,7 @@ export function AppSidebarNav() {
   return (
     <nav className="sticky top-0 z-10 flex items-center justify-between border-b bg-bg px-4 py-2">
       <Breadcrumbs>
-        <BreadcrumbsItem href="/">Nightshift</BreadcrumbsItem>
+        <BreadcrumbsItem href="/">nightshift</BreadcrumbsItem>
         {pageTitle && <BreadcrumbsItem>{pageTitle}</BreadcrumbsItem>}
       </Breadcrumbs>
       <span className="flex items-center gap-x-2 ml-auto">
