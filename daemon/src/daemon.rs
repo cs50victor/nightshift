@@ -5,6 +5,7 @@ use tokio::signal;
 use crate::update;
 
 const UPDATE_INTERVAL: Duration = Duration::from_secs(3600);
+const OPENCODE_CONFIG: &str = include_str!("../opencode.json");
 const OPENCODE_PORT: u16 = 19276;
 const PROXY_PORT: u16 = OPENCODE_PORT + 1;
 
@@ -49,6 +50,7 @@ pub async fn run() -> Result<()> {
     let home = std::env::var("HOME").unwrap_or_else(|_| ".".into());
     let data_dir = std::path::PathBuf::from(home).join(".nightshift");
     std::fs::create_dir_all(&data_dir)?;
+    std::fs::write(data_dir.join("opencode.json"), OPENCODE_CONFIG)?;
 
     // NOTE(victor): No supervisor. If opencode dies, the daemon exits.
     // launchd/systemd restarts the daemon, which restarts opencode.
