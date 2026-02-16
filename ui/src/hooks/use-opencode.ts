@@ -30,8 +30,16 @@ export function useProviders() {
   return useSWR("/api/opencode/config/providers", fetcher);
 }
 
+const HIDDEN_AGENTS = new Set(["compaction", "title", "summary"]);
+
 export function useAgents() {
-  return useSWR("/api/opencode/agent", fetcher);
+  const result = useSWR("/api/opencode/agent", fetcher);
+  const filtered = Array.isArray(result.data)
+    ? result.data.filter(
+        (agent: { name: string }) => !HIDDEN_AGENTS.has(agent.name),
+      )
+    : result.data;
+  return { ...result, data: filtered };
 }
 
 export function useHealth() {
