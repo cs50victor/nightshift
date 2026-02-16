@@ -426,7 +426,7 @@ export default function SessionPage() {
   };
 
   return (
-    <div className="flex h-full flex-col -m-4">
+    <div className="flex h-full flex-col -my-4 mx-auto w-full max-w-5xl">
       <div
         className="flex-1 overflow-auto overflow-x-hidden"
         ref={chatContainerRef}
