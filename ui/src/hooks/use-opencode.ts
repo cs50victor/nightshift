@@ -43,7 +43,10 @@ export function useCurrentProject() {
 }
 
 export function useProjectPath() {
-  return useSWR<{ path: string }>("/api/opencode/project/absolute_path", fetcher);
+  return useSWR<{ path: string }>(
+    "/api/opencode/project/absolute_path",
+    fetcher,
+  );
 }
 
 export function useCreateSession() {
