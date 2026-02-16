@@ -52,9 +52,7 @@ const fetcher = async (url: string): Promise<MessageWithParts[]> => {
 };
 
 export function useSessionMessages(sessionId: string | undefined) {
-  const key = sessionId
-    ? `/api/opencode/session/${sessionId}/message`
-    : null;
+  const key = sessionId ? `/api/opencode/session/${sessionId}/message` : null;
 
   const {
     data,

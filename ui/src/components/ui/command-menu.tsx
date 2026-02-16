@@ -70,7 +70,9 @@ const sizes = {
 };
 
 interface CommandMenuProps
-  extends AutocompleteProps, MenuTriggerProps, CommandMenuProviderProps {
+  extends AutocompleteProps,
+    MenuTriggerProps,
+    CommandMenuProviderProps {
   isDismissable?: boolean;
   "aria-label"?: string;
   shortcut?: string;
@@ -157,6 +159,7 @@ const CommandMenuSearch = ({
   placeholder,
   ...props
 }: CommandMenuSearchProps) => {
+  // biome-ignore lint/style/noNonNullAssertion: guaranteed by parent OverlayTrigger
   const state = use(OverlayTriggerStateContext)!;
   const { isPending, escapeButton } = useCommandMenu();
   return (
@@ -247,9 +250,8 @@ const CommandMenuItem = ({
   );
 };
 
-interface CommandMenuDescriptionProps extends React.ComponentProps<
-  typeof MenuDescription
-> {}
+interface CommandMenuDescriptionProps
+  extends React.ComponentProps<typeof MenuDescription> {}
 
 const CommandMenuDescription = ({
   className,

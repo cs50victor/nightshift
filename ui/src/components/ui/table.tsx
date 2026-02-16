@@ -275,7 +275,7 @@ const TableRow = <T extends object>({
             className="grid place-content-center rounded-xs px-[calc(var(--gutter)/2)] outline-hidden focus-visible:ring focus-visible:ring-ring"
           >
             <svg
-              aria-hidden
+              aria-hidden="true"
               data-slot="icon"
               xmlns="http://www.w3.org/2000/svg"
               width={16}

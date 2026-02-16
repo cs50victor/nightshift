@@ -2,9 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { RouterProvider } from "react-aria-components";
-import { ThemeProvider } from "@/providers/theme-provider";
-import { Toast } from "@/components/ui/toast";
 import Cmd from "@/components/cmd";
+import { Toast } from "@/components/ui/toast";
+import { ThemeProvider } from "@/providers/theme-provider";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const router = useRouter();

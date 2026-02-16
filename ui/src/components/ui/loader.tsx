@@ -28,6 +28,7 @@ const Ring = ({ className, ...props }: React.SVGProps<SVGSVGElement>) => (
 
 const Spin = ({ className, ...props }: React.SVGProps<SVGSVGElement>) => (
   <svg
+    aria-hidden="true"
     className={twMerge("size-4", className)}
     viewBox="0 0 2400 2400"
     {...props}
@@ -67,10 +68,11 @@ const LOADERS = {
 
 const DEFAULT_SPINNER = "spin";
 
-export interface LoaderProps extends Omit<
-  React.ComponentPropsWithoutRef<"svg">,
-  "display" | "opacity" | "intent"
-> {
+export interface LoaderProps
+  extends Omit<
+    React.ComponentPropsWithoutRef<"svg">,
+    "display" | "opacity" | "intent"
+  > {
   variant?: keyof typeof LOADERS;
   percentage?: number;
   isIndeterminate?: boolean;

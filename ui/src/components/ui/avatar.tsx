@@ -1,12 +1,12 @@
 "use client";
-import { twMerge } from "tailwind-merge"
+import { twMerge } from "tailwind-merge";
 
 interface AvatarProps {
-  src?: string | null
-  initials?: string
-  alt?: string
-  className?: string
-  isSquare?: boolean
+  src?: string | null;
+  initials?: string;
+  alt?: string;
+  className?: string;
+  isSquare?: boolean;
   size?:
     | "xs"
     | "sm"
@@ -20,7 +20,7 @@ interface AvatarProps {
     | "6xl"
     | "7xl"
     | "8xl"
-    | "9xl"
+    | "9xl";
 }
 
 const Avatar = ({
@@ -61,7 +61,7 @@ const Avatar = ({
         <svg
           className="size-full select-none fill-current p-[5%] font-md text-[48px] uppercase"
           viewBox="0 0 100 100"
-          aria-hidden={alt ? undefined : "true"}
+          aria-hidden="true"
         >
           {alt && <title>{alt}</title>}
           <text
@@ -76,10 +76,17 @@ const Avatar = ({
           </text>
         </svg>
       )}
-      {src && <img className="size-full object-cover object-center" src={src} alt={alt} />}
+      {src && (
+        // biome-ignore lint/performance/noImgElement: avatar image from dynamic src
+        <img
+          className="size-full object-cover object-center"
+          src={src}
+          alt={alt}
+        />
+      )}
     </span>
-  )
-}
+  );
+};
 
-export type { AvatarProps }
-export { Avatar }
+export type { AvatarProps };
+export { Avatar };

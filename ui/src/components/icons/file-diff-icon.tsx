@@ -8,6 +8,7 @@ export interface IconProps extends React.SVGProps<SVGSVGElement> {
 function FileDiffIcon({ size = "18px", ...props }: IconProps) {
   return (
     <svg
+      aria-hidden="true"
       xmlns="http://www.w3.org/2000/svg"
       width={size}
       height={size}

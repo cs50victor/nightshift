@@ -2,14 +2,14 @@
 import type {
   DialogTriggerProps,
   PopoverProps as PopoverPrimitiveProps,
-} from "react-aria-components"
+} from "react-aria-components";
 import {
   DialogTrigger as DialogTriggerPrimitive,
   OverlayArrow,
   Popover as PopoverPrimitive,
-} from "react-aria-components"
-import { twMerge } from "tailwind-merge"
-import { cx } from "@/lib/primitive"
+} from "react-aria-components";
+import { twMerge } from "tailwind-merge";
+import { cx } from "@/lib/primitive";
 import {
   DialogBody,
   DialogClose,
@@ -18,26 +18,29 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "./dialog"
+} from "./dialog";
 
-type PopoverProps = DialogTriggerProps
+type PopoverProps = DialogTriggerProps;
 const Popover = (props: PopoverProps) => {
-  return <DialogTriggerPrimitive {...props} />
-}
+  return <DialogTriggerPrimitive {...props} />;
+};
 
-const PopoverTitle = DialogTitle
-const PopoverHeader = DialogHeader
-const PopoverBody = DialogBody
-const PopoverFooter = ({ className, ...props }: React.ComponentProps<typeof DialogFooter>) => (
+const PopoverTitle = DialogTitle;
+const PopoverHeader = DialogHeader;
+const PopoverBody = DialogBody;
+const PopoverFooter = ({
+  className,
+  ...props
+}: React.ComponentProps<typeof DialogFooter>) => (
   <DialogFooter
     className={twMerge("justify-start has-[button]:justify-end", className)}
     {...props}
   />
-)
+);
 
 interface PopoverContentProps extends PopoverPrimitiveProps {
-  arrow?: boolean
-  ref?: React.Ref<HTMLDivElement>
+  arrow?: boolean;
+  ref?: React.Ref<HTMLDivElement>;
 }
 
 const PopoverContent = ({
@@ -47,7 +50,7 @@ const PopoverContent = ({
   ref,
   ...props
 }: PopoverContentProps) => {
-  const offset = props.offset ?? (arrow ? 12 : 8)
+  const offset = props.offset ?? (arrow ? 12 : 8);
   return (
     <PopoverPrimitive
       ref={ref}
@@ -67,6 +70,7 @@ const PopoverContent = ({
           {arrow && (
             <OverlayArrow className="group">
               <svg
+                aria-hidden="true"
                 width={12}
                 height={12}
                 viewBox="0 0 12 12"
@@ -76,20 +80,23 @@ const PopoverContent = ({
               </svg>
             </OverlayArrow>
           )}
-          <div data-slot="popover-inner" className="max-h-[inherit] overflow-y-auto">
+          <div
+            data-slot="popover-inner"
+            className="max-h-[inherit] overflow-y-auto"
+          >
             {typeof children === "function" ? children(values) : children}
           </div>
         </>
       )}
     </PopoverPrimitive>
-  )
-}
+  );
+};
 
-const PopoverTrigger = DialogTrigger
-const PopoverClose = DialogClose
-const PopoverDescription = DialogDescription
+const PopoverTrigger = DialogTrigger;
+const PopoverClose = DialogClose;
+const PopoverDescription = DialogDescription;
 
-export type { PopoverProps, PopoverContentProps }
+export type { PopoverProps, PopoverContentProps };
 export {
   Popover,
   PopoverTrigger,
@@ -100,4 +107,4 @@ export {
   PopoverFooter,
   PopoverHeader,
   PopoverTitle,
-}
+};

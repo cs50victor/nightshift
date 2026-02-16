@@ -81,14 +81,17 @@ export function AppSidebarNav() {
       return;
     }
 
-    const response = await fetch(`/api/opencode/session/${sessionId}/prompt_async`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        parts: [{ type: "text", text: prompt }],
-        model: selectedModel,
-      }),
-    });
+    const response = await fetch(
+      `/api/opencode/session/${sessionId}/prompt_async`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          parts: [{ type: "text", text: prompt }],
+          model: selectedModel,
+        }),
+      },
+    );
 
     if (!response.ok) {
       throw new Error("Failed to send request");

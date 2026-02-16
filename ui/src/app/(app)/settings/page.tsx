@@ -1,9 +1,7 @@
 "use client";
+import { CpuChipIcon, KeyIcon, SwatchIcon } from "@heroicons/react/24/outline";
 import * as React from "react";
 import { AccentSelector } from "@/components/accent-selector";
-import { useTheme } from "@/providers/theme-provider";
-import { useBreadcrumb } from "@/contexts/breadcrumb-context";
-import { SwatchIcon, CpuChipIcon, KeyIcon } from "@heroicons/react/24/outline";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -11,7 +9,9 @@ import {
   SelectItem,
   SelectTrigger,
 } from "@/components/ui/select";
-import { Tabs, TabList, Tab, TabPanel } from "@/components/ui/tabs";
+import { Tab, TabList, TabPanel, Tabs } from "@/components/ui/tabs";
+import { useBreadcrumb } from "@/contexts/breadcrumb-context";
+import { useTheme } from "@/providers/theme-provider";
 
 const themes = [
   { id: "light", title: "Light" },

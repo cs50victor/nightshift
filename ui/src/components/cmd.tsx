@@ -1,6 +1,11 @@
 "use client";
-import { useState, useEffect } from "react";
-import { useRouter, useParams, usePathname } from "next/navigation";
+import { TrashIcon } from "@heroicons/react/24/solid";
+import { useParams, usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { IconGridPlus } from "@/components/icons/grid-plus-icon";
+import { IconThemeDark } from "@/components/icons/theme-dark-icon";
+import { IconThemeLight } from "@/components/icons/theme-light-icon";
+import { IconThemeSystem } from "@/components/icons/theme-system-icon";
 import {
   CommandMenu,
   CommandMenuItem,
@@ -9,18 +14,13 @@ import {
   CommandMenuSearch,
   CommandMenuSection,
 } from "@/components/ui/command-menu";
+import { toast } from "@/components/ui/toast";
 import {
-  useSessions,
   useCreateSession,
   useDeleteSession,
+  useSessions,
 } from "@/hooks/use-opencode";
-import { IconGridPlus } from "@/components/icons/grid-plus-icon";
-import { IconThemeDark } from "@/components/icons/theme-dark-icon";
-import { IconThemeLight } from "@/components/icons/theme-light-icon";
-import { IconThemeSystem } from "@/components/icons/theme-system-icon";
-import { TrashIcon } from "@heroicons/react/24/solid";
 import { useTheme } from "@/providers/theme-provider";
-import { toast } from "@/components/ui/toast";
 
 export default function Cmd() {
   const [isOpen, setIsOpen] = useState(false);
@@ -34,12 +34,11 @@ export default function Cmd() {
   const { setTheme } = useTheme();
 
   const currentSessionId = params.id as string | undefined;
-  const isOnSessionPage =
-    pathname.startsWith("/session/") && currentSessionId;
+  const isOnSessionPage = pathname.startsWith("/session/") && currentSessionId;
 
   useEffect(() => {
     setIsOpen(false);
-  }, [pathname]);
+  }, []);
 
   async function handleNewSession() {
     setCreating(true);
@@ -135,7 +134,6 @@ export default function Cmd() {
             <CommandMenuLabel>System</CommandMenuLabel>
           </CommandMenuItem>
         </CommandMenuSection>
-
       </CommandMenuList>
     </CommandMenu>
   );

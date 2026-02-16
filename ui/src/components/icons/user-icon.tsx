@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import type React from "react";
 
 export interface IconProps extends React.SVGProps<SVGSVGElement> {
   size?: string;
@@ -8,6 +8,7 @@ export interface IconProps extends React.SVGProps<SVGSVGElement> {
 function IconUser({ size = "24px", ...props }: IconProps) {
   return (
     <svg
+      aria-hidden="true"
       width={size}
       height={size}
       viewBox="0 0 24 24"

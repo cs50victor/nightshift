@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import type React from "react";
 
 export interface IconProps extends React.SVGProps<SVGSVGElement> {
   strokeWidth?: number;
@@ -13,6 +13,7 @@ export function IconGridPlus({
 }: IconProps) {
   return (
     <svg
+      aria-hidden="true"
       xmlns="http://www.w3.org/2000/svg"
       x="0px"
       y="0px"

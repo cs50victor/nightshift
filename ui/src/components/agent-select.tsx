@@ -1,6 +1,7 @@
 "use client";
-import { useEffect } from "react";
 import { InformationCircleIcon } from "@heroicons/react/24/outline";
+import type { Agent } from "@opencode-ai/sdk";
+import { useEffect } from "react";
 import {
   Select,
   SelectContent,
@@ -15,7 +16,6 @@ import {
 } from "@/components/ui/tooltip";
 import { useAgents } from "@/hooks/use-opencode";
 import { useAgentStore } from "@/stores/agent-store";
-import type { Agent } from "@opencode-ai/sdk";
 
 interface AgentSelectProps {
   sessionId: string | null;

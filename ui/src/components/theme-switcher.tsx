@@ -1,12 +1,12 @@
 "use client";
 import {
+  ComputerDesktopIcon,
   MoonIcon,
   SunIcon,
-  ComputerDesktopIcon,
 } from "@heroicons/react/24/outline";
-import { useTheme } from "@/providers/theme-provider";
 import { Button } from "@/components/ui/button";
 import { Menu, MenuContent, MenuItem, MenuTrigger } from "@/components/ui/menu";
+import { useTheme } from "@/providers/theme-provider";
 
 export function ThemeSwitcher() {
   const { setTheme, resolvedTheme } = useTheme();

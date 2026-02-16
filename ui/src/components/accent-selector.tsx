@@ -1,6 +1,4 @@
 "use client";
-import { useTheme } from "@/providers/theme-provider";
-import { type AccentColor } from "@/stores/accent-store";
 import {
   Select,
   SelectContent,
@@ -8,6 +6,8 @@ import {
   SelectLabel,
   SelectTrigger,
 } from "@/components/ui/select";
+import { useTheme } from "@/providers/theme-provider";
+import type { AccentColor } from "@/stores/accent-store";
 
 const ACCENT_COLORS: { id: AccentColor; name: string; color: string }[] = [
   { id: "blue", name: "Blue", color: "oklch(0.546 0.245 262.881)" },

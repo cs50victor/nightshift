@@ -1,13 +1,13 @@
 "use client";
 import {
   createContext,
-  useContext,
-  useState,
-  useEffect,
   type ReactNode,
+  useContext,
+  useEffect,
+  useState,
 } from "react";
-import { useAccentStore, type AccentColor } from "@/stores/accent-store";
-import { useFontStore, type FontFamily } from "@/stores/font-store";
+import { type AccentColor, useAccentStore } from "@/stores/accent-store";
+import { type FontFamily, useFontStore } from "@/stores/font-store";
 
 type Theme = "light" | "dark" | "system";
 

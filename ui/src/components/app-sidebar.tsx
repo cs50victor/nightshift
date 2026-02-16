@@ -1,11 +1,11 @@
 "use client";
 import { PlusIcon } from "@heroicons/react/24/solid";
-import FileDiffIcon from "@/components/icons/file-diff-icon";
-import { useState, useMemo } from "react";
 import { parsePatchFiles } from "@pierre/diffs";
-import { Link as UILink } from "@/components/ui/link";
-import { toast } from "@/components/ui/toast";
+import { useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
 import IconBox from "@/components/icons/box-icon";
+import FileDiffIcon from "@/components/icons/file-diff-icon";
+import { Link as UILink } from "@/components/ui/link";
 import {
   Sidebar,
   SidebarContent,
@@ -16,12 +16,12 @@ import {
   SidebarSection,
   SidebarSectionGroup,
 } from "@/components/ui/sidebar";
+import { toast } from "@/components/ui/toast";
 import {
   useCreateSession,
   useCurrentProject,
   useGitDiff,
 } from "@/hooks/use-opencode";
-import { useRouter } from "next/navigation";
 
 interface Project {
   id: string;
@@ -93,6 +93,7 @@ export default function AppSidebar(
     <Sidebar {...props}>
       <SidebarHeader>
         <UILink href="/" className="flex items-center gap-x-2">
+          {/* biome-ignore lint/performance/noImgElement: static SVG logo, no optimization needed */}
           <img src="/logo.svg" alt="OpenCode Portal" className="size-6" />
           <SidebarLabel className="font-medium">
             OpenCode <span className="text-muted-fg">Portal</span>
@@ -126,7 +127,6 @@ export default function AppSidebar(
               <SidebarLabel>Diff</SidebarLabel>
             </SidebarItem>
           </SidebarSection>
-
         </SidebarSectionGroup>
       </SidebarContent>
 

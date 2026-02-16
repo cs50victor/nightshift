@@ -1,14 +1,14 @@
 "use client";
-import { CheckIcon, MinusIcon } from "@heroicons/react/20/solid"
-import type { CheckboxGroupProps, CheckboxProps } from "react-aria-components"
+import { CheckIcon, MinusIcon } from "@heroicons/react/20/solid";
+import type { CheckboxGroupProps, CheckboxProps } from "react-aria-components";
 import {
   CheckboxGroup as CheckboxGroupPrimitive,
   Checkbox as CheckboxPrimitive,
   composeRenderProps,
-} from "react-aria-components"
-import { twMerge } from "tailwind-merge"
-import { cx } from "@/lib/primitive"
-import { Label } from "./field"
+} from "react-aria-components";
+import { twMerge } from "tailwind-merge";
+import { cx } from "@/lib/primitive";
+import { Label } from "./field";
 
 export function CheckboxGroup({ className, ...props }: CheckboxGroupProps) {
   return (
@@ -20,7 +20,7 @@ export function CheckboxGroup({ className, ...props }: CheckboxGroupProps) {
         className,
       )}
     />
-  )
+  );
 }
 
 export function Checkbox({ className, children, ...props }: CheckboxProps) {
@@ -35,15 +35,22 @@ export function Checkbox({ className, children, ...props }: CheckboxProps) {
     >
       {composeRenderProps(
         children,
-        (children, { isSelected, isIndeterminate, isFocusVisible, isInvalid }) => {
-          const isStringChild = typeof children === "string"
+        (
+          children,
+          { isSelected, isIndeterminate, isFocusVisible, isInvalid },
+        ) => {
+          const isStringChild = typeof children === "string";
           const indicator = isIndeterminate ? (
             <MinusIcon data-slot="check-indicator" />
           ) : isSelected ? (
             <CheckIcon data-slot="check-indicator" />
-          ) : null
+          ) : null;
 
-          const content = isStringChild ? <CheckboxLabel>{children}</CheckboxLabel> : children
+          const content = isStringChild ? (
+            <CheckboxLabel>{children}</CheckboxLabel>
+          ) : (
+            children
+          );
 
           return (
             <div
@@ -78,13 +85,13 @@ export function Checkbox({ className, children, ...props }: CheckboxProps) {
               </span>
               {content}
             </div>
-          )
+          );
         },
       )}
     </CheckboxPrimitive>
-  )
+  );
 }
 
 export function CheckboxLabel(props: React.ComponentProps<typeof Label>) {
-  return <Label elementType="span" {...props} />
+  return <Label elementType="span" {...props} />;
 }

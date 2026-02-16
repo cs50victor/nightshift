@@ -14,8 +14,8 @@ import {
   SelectSection,
   SelectTrigger,
 } from "@/components/ui/select";
-import { useModelStore } from "@/stores/model-store";
 import { useProviders } from "@/hooks/use-opencode";
+import { useModelStore } from "@/stores/model-store";
 
 interface ModelItem {
   id: string;

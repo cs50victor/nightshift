@@ -16,9 +16,9 @@ import { cx } from "@/lib/primitive";
 import {
   DropdownDescription,
   DropdownItem,
+  DropdownLabel,
   DropdownSection,
   DropdownSeparator,
-  DropdownLabel,
 } from "./dropdown";
 import { fieldStyles } from "./field";
 import { PopoverContent } from "./popover";
@@ -43,10 +43,8 @@ const Select = <T extends object, M extends "single" | "multiple" = "single">({
   );
 };
 
-interface SelectListProps<T extends object> extends Omit<
-  ListBoxProps<T>,
-  "layout" | "orientation"
-> {
+interface SelectListProps<T extends object>
+  extends Omit<ListBoxProps<T>, "layout" | "orientation"> {
   items?: Iterable<T>;
   popover?: Omit<PopoverProps, "children">;
 }

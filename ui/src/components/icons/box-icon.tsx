@@ -9,6 +9,7 @@ export interface IconProps extends React.SVGProps<SVGSVGElement> {
 function IconBox({ strokeWidth = 1.5, size = "18px", ...props }: IconProps) {
   return (
     <svg
+      aria-hidden="true"
       xmlns="http://www.w3.org/2000/svg"
       x="0px"
       y="0px"
