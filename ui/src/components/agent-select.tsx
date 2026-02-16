@@ -21,7 +21,9 @@ function isValidAgent(agents: Agent[], name?: string) {
 }
 
 function getDefaultAgentName(agents: Agent[]) {
-  return agents.find((agent) => agent.name === "build")?.name ?? agents[0]?.name;
+  return (
+    agents.find((agent) => agent.name === "build")?.name ?? agents[0]?.name
+  );
 }
 
 export function AgentSelect({ sessionId }: AgentSelectProps) {

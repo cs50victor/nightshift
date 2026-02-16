@@ -31,8 +31,7 @@ async fn handle(
                             Ok((client, upstream)) => {
                                 let mut c = TokioIo::new(client);
                                 let mut u = TokioIo::new(upstream);
-                                if let Err(e) =
-                                    tokio::io::copy_bidirectional(&mut c, &mut u).await
+                                if let Err(e) = tokio::io::copy_bidirectional(&mut c, &mut u).await
                                 {
                                     tracing::debug!("ws pipe closed: {e}");
                                 }

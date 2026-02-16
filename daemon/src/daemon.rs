@@ -65,11 +65,10 @@ pub async fn run() -> Result<()> {
         child.id().unwrap_or(0)
     );
 
-    let node_id = crate::nodes::register(PROXY_PORT)
-        .unwrap_or_else(|e| {
-            tracing::warn!("failed to register node: {e}");
-            String::new()
-        });
+    let node_id = crate::nodes::register(PROXY_PORT).unwrap_or_else(|e| {
+        tracing::warn!("failed to register node: {e}");
+        String::new()
+    });
 
     tokio::select! {
         status = child.wait() => {
