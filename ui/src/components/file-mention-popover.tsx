@@ -1,7 +1,7 @@
 "use client";
 import { DocumentIcon } from "@heroicons/react/24/outline";
 import { useEffect, useRef, useState } from "react";
-import useMediaQuery from "@/hooks/use-media-query";
+import { useMediaQuery } from "usehooks-ts";
 
 interface FileResult {
   path: string;
@@ -122,7 +122,7 @@ export function FileMentionPopover({
   const [position, setPosition] = useState<CaretPosition | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
-  const { isMobile } = useMediaQuery();
+  const isMobile = useMediaQuery("(max-width: 640px)");
 
   useEffect(() => {
     if (isOpen && mentionStart !== null && textareaRef.current) {

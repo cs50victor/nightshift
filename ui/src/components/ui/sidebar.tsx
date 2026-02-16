@@ -29,8 +29,8 @@ import {
   Button as Trigger,
 } from "react-aria-components";
 import { twJoin, twMerge } from "tailwind-merge";
+import { useMediaQuery } from "usehooks-ts";
 import { SheetContent } from "@/components/ui/sheet";
-import useMediaQuery from "@/hooks/use-media-query";
 import { cx } from "@/lib/primitive";
 import { Button } from "./button";
 import { Link } from "./link";
@@ -100,7 +100,9 @@ const SidebarProvider = ({
     [setOpenProp, open],
   );
 
-  const { isMobile, device } = useMediaQuery();
+  const isMobile = useMediaQuery("(max-width: 640px)");
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   const toggleSidebar = useCallback(() => {
     return isMobile ? setOpenMobile((open) => !open) : setOpen((open) => !open);
@@ -133,7 +135,7 @@ const SidebarProvider = ({
     [state, open, setOpen, isMobile, openMobile, toggleSidebar],
   );
 
-  if (device === null) {
+  if (!mounted) {
     return null;
   }
 
