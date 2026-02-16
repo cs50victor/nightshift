@@ -5,7 +5,9 @@ use tokio::signal;
 use crate::update;
 
 const UPDATE_INTERVAL: Duration = Duration::from_secs(3600);
+const OPENCODE_CONFIG: &str = include_str!("../opencode.json");
 const OPENCODE_PORT: u16 = 19276;
+const PROXY_PORT: u16 = OPENCODE_PORT + 1;
 
 pub async fn run() -> Result<()> {
     tracing::info!("starting nightshift daemon v{}", env!("CARGO_PKG_VERSION"));
@@ -45,10 +47,16 @@ pub async fn run() -> Result<()> {
         });
     }
 
+    let home = std::env::var("HOME").unwrap_or_else(|_| ".".into());
+    let data_dir = std::path::PathBuf::from(home).join(".nightshift");
+    std::fs::create_dir_all(&data_dir)?;
+    std::fs::write(data_dir.join("opencode.json"), OPENCODE_CONFIG)?;
+
     // NOTE(victor): No supervisor. If opencode dies, the daemon exits.
     // launchd/systemd restarts the daemon, which restarts opencode.
     let mut child = tokio::process::Command::new("opencode")
         .args(["serve", "--port", &OPENCODE_PORT.to_string()])
+        .current_dir(&data_dir)
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
         .spawn()?;
@@ -59,9 +67,19 @@ pub async fn run() -> Result<()> {
         child.id().unwrap_or(0)
     );
 
+    let node_id = crate::nodes::register(PROXY_PORT).unwrap_or_else(|e| {
+        tracing::warn!("failed to register node: {e}");
+        String::new()
+    });
+
     tokio::select! {
         status = child.wait() => {
             tracing::error!("opencode exited: {:?}, daemon will exit", status);
+            std::process::exit(1);
+        }
+        result = crate::proxy::serve(OPENCODE_PORT, PROXY_PORT, data_dir.to_string_lossy().into_owned()) => {
+            tracing::error!("proxy server failed: {:?}", result);
+            child.kill().await.ok();
             std::process::exit(1);
         }
         _ = signal::ctrl_c() => {
@@ -70,5 +88,6 @@ pub async fn run() -> Result<()> {
         }
     }
 
+    crate::nodes::deregister(&node_id);
     Ok(())
 }

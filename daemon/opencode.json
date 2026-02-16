@@ -1,0 +1,82 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "claude-teams": {
+      "type": "local",
+      "command": ["uvx", "--from", "/Users/vic8or/dev/claude-code-teams-mcp", "claude-teams"],
+      "enabled": true,
+      "environment": {
+        "USE_TMUX_WINDOWS":"1",
+        "CLAUDE_TEAMS_BACKENDS": "opencode,claude",
+        "OPENCODE_SERVER_URL": "http://localhost:19277",
+        "CLAUDE_TEAMS_DANGEROUSLY_SKIP_PERMISSIONS": "1"
+      }
+    }
+  },
+  "enabled_providers": ["anthropic", "openai", "opencode"],
+  "default_agent": "team-manager",
+  "permission": {
+    "Task": "deny",
+    "TaskList": "deny",
+    "TaskStop": "deny",
+    "AgentTask": "deny",
+    "external_directory": {
+      "/tmp/**": "allow",
+      "/private/tmp/**": "allow"
+    }
+  },
+  "provider": {
+    "opencode": {
+      "whitelist": []
+    },
+    "openai": {
+      "options": {
+        "reasoningEffect": "medium",
+        "reasoningSummary": "auto",
+        "textVerbosity": "medium",
+        "include": ["reasoning.encrypted_content"]
+      },
+      "whitelist": ["gpt-5.2-codex", "gpt-5.3-codex"],
+      "models": {
+        "gpt-5.2-codex": {
+          "options": {
+            "reasoningEffort": "xhigh",
+            "reasoningSummary": "auto",
+            "include": ["reasoning.encrypted_content"]
+          }
+        }
+      }
+    },
+    "anthropic": {
+      "whitelist": [
+        "claude-haiku-4-5-20251001",
+        "claude-opus-4-5-20251101",
+        "claude-opus-4-6"
+      ]
+    }
+  },
+  "agent": {
+    "team-manager": {
+      "description": "Project manager that orchestrates work across parallel workers",
+      "mode": "primary",
+      "model": "anthropic/claude-opus-4-6",
+      "prompt": "{file:~/.agents/prompts/planner-system-prompt.txt}",
+      "temperature": 0.1,
+      "permission": {
+        "*": "allow",
+        "write": "deny",
+        "edit": "deny",
+        "bash": "deny",
+        "webfetch": "deny",
+        "websearch": "deny",
+        "codesearch": "deny",
+        "AgentTask": "deny",
+        "lsp": "deny",
+        "task": "deny",
+        "skill": "deny",
+        "plan_enter": "deny",
+        "plan_exit": "deny"
+      }
+    }
+  }
+}
