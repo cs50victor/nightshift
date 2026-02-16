@@ -1,10 +1,9 @@
 "use client";
+import { CubeIcon, DocumentTextIcon } from "@heroicons/react/24/outline";
 import { PlusIcon } from "@heroicons/react/24/solid";
 import { parsePatchFiles } from "@pierre/diffs";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import IconBox from "@/components/icons/box-icon";
-import FileDiffIcon from "@/components/icons/file-diff-icon";
 import { Link as UILink } from "@/components/ui/link";
 import {
   Sidebar,
@@ -50,7 +49,7 @@ function CurrentProject() {
 
   return (
     <div className="flex items-center gap-2 px-2 py-1.5">
-      <IconBox className="shrink-0" />
+      <CubeIcon className="size-[18px] shrink-0 text-muted-fg" />
       <div className="text-sm font-medium">{projectName}</div>
     </div>
   );
@@ -123,7 +122,7 @@ export default function AppSidebar(
               className="cursor-pointer gap-x-2"
               badge={diffFileCount > 0 ? diffFileCount : undefined}
             >
-              <FileDiffIcon className="size-4 shrink-0" data-slot="icon" />
+              <DocumentTextIcon className="size-4 shrink-0" data-slot="icon" />
               <SidebarLabel>Diff</SidebarLabel>
             </SidebarItem>
           </SidebarSection>

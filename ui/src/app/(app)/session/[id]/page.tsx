@@ -5,19 +5,23 @@ import { memo, useCallback, useEffect, useRef, useState } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import "ldrs/react/Ripples.css";
+import {
+  EyeIcon,
+  MagnifyingGlassIcon,
+  PencilIcon,
+  PencilSquareIcon,
+} from "@heroicons/react/24/outline";
+import {
+  PaperAirplaneIcon,
+  SparklesIcon,
+  UserIcon,
+} from "@heroicons/react/24/solid";
 import type { Session } from "@opencode-ai/sdk";
 import { AgentSelect } from "@/components/agent-select";
 import {
   FileMentionPopover,
   useFileMention,
 } from "@/components/file-mention-popover";
-import IconBadgeSparkle from "@/components/icons/badge-sparkle-icon";
-import IconEye from "@/components/icons/eye-icon";
-import IconSquareFeather from "@/components/icons/feather-icon";
-import IconMagnifier from "@/components/icons/magnifier-icon";
-import IconPen from "@/components/icons/pen-icon";
-import SendIcon from "@/components/icons/send-icon";
-import IconUser from "@/components/icons/user-icon";
 import { ModelSelect } from "@/components/model-select";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -63,7 +67,7 @@ function formatToolCall(part: ToolPart): {
       const additions = newStr.split("\n").length;
       const deletions = oldStr.split("\n").length;
       return {
-        icon: <IconPen size="12px" />,
+        icon: <PencilIcon className="size-3" />,
         label: `edit ${filePath}`,
         details: `(+${additions}-${deletions})`,
       };
@@ -71,7 +75,7 @@ function formatToolCall(part: ToolPart): {
     case "read": {
       const filePath = input.filePath || input.file || "";
       return {
-        icon: <IconEye size="12px" />,
+        icon: <EyeIcon className="size-3" />,
         label: `read ${filePath}`,
       };
     }
@@ -80,7 +84,7 @@ function formatToolCall(part: ToolPart): {
       const content = String(input.content || "");
       const lines = content.split("\n").length;
       return {
-        icon: <IconSquareFeather size="12px" />,
+        icon: <PencilSquareIcon className="size-3" />,
         label: `write ${filePath}`,
         details: `(${lines} lines)`,
       };
@@ -98,7 +102,7 @@ function formatToolCall(part: ToolPart): {
       const pattern = input?.pattern || "";
       const path = input?.path || "";
       return {
-        icon: <IconMagnifier size="12px" />,
+        icon: <MagnifyingGlassIcon className="size-3" />,
         label: `glob ${pattern}`,
         details: path ? `in ${path}` : undefined,
       };
@@ -176,9 +180,9 @@ const MessageItem = memo(function MessageItem({
       {textContent && (
         <div className="flex gap-2">
           {isAssistant ? (
-            <IconBadgeSparkle size="16px" className="shrink-0 mt-1" />
+            <SparklesIcon className="size-4 shrink-0 mt-1 text-muted-fg" />
           ) : (
-            <IconUser size="16px" className="shrink-0 mt-1" />
+            <UserIcon className="size-4 shrink-0 mt-1 text-muted-fg" />
           )}
           <div className="flex-1">
             {!isAssistant && message.isQueued && (
@@ -546,7 +550,7 @@ export default function SessionPage() {
                 isDisabled={!input.trim()}
                 className="min-w-32"
               >
-                <SendIcon size="16px" />
+                <PaperAirplaneIcon className="size-4" />
                 {sending ? "Sending..." : "Send"}
               </Button>
             </div>

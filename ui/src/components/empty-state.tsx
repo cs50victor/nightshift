@@ -1,7 +1,7 @@
 "use client";
+import { SquaresPlusIcon } from "@heroicons/react/24/outline";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { IconGridPlus } from "@/components/icons/grid-plus-icon";
 import { Button } from "@/components/ui/button";
 import { Keyboard } from "@/components/ui/keyboard";
 import { useCreateSession } from "@/hooks/use-opencode";
@@ -48,7 +48,7 @@ export default function EmptyState() {
           onPress={handleNewSession}
           isDisabled={creating}
         >
-          <IconGridPlus className="shrink-0" />
+          <SquaresPlusIcon className="size-[18px] shrink-0" />
           {creating ? "Creating..." : "New Session"}
         </Button>
         <div className="text-sm text-muted-fg mt-4">

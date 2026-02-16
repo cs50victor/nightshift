@@ -1,11 +1,13 @@
 "use client";
+import {
+  ComputerDesktopIcon,
+  MoonIcon,
+  SquaresPlusIcon,
+  SunIcon,
+} from "@heroicons/react/24/outline";
 import { TrashIcon } from "@heroicons/react/24/solid";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { IconGridPlus } from "@/components/icons/grid-plus-icon";
-import { IconThemeDark } from "@/components/icons/theme-dark-icon";
-import { IconThemeLight } from "@/components/icons/theme-light-icon";
-import { IconThemeSystem } from "@/components/icons/theme-system-icon";
 import {
   CommandMenu,
   CommandMenuItem,
@@ -104,7 +106,7 @@ export default function Cmd() {
             onAction={handleNewSession}
             isDisabled={creating}
           >
-            <IconGridPlus className="size-4 mr-2" />
+            <SquaresPlusIcon className="size-4 mr-2" />
             <CommandMenuLabel>
               {creating ? "Creating..." : "New Session"}
             </CommandMenuLabel>
@@ -116,21 +118,21 @@ export default function Cmd() {
             textValue="Light theme"
             onAction={() => handleThemeChange("light")}
           >
-            <IconThemeLight className="size-4 mr-2" />
+            <SunIcon className="size-4 mr-2" />
             <CommandMenuLabel>Light</CommandMenuLabel>
           </CommandMenuItem>
           <CommandMenuItem
             textValue="Dark theme"
             onAction={() => handleThemeChange("dark")}
           >
-            <IconThemeDark className="size-4 mr-2" />
+            <MoonIcon className="size-4 mr-2" />
             <CommandMenuLabel>Dark</CommandMenuLabel>
           </CommandMenuItem>
           <CommandMenuItem
             textValue="System theme"
             onAction={() => handleThemeChange("system")}
           >
-            <IconThemeSystem className="size-4 mr-2" />
+            <ComputerDesktopIcon className="size-4 mr-2" />
             <CommandMenuLabel>System</CommandMenuLabel>
           </CommandMenuItem>
         </CommandMenuSection>

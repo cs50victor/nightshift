@@ -1,11 +1,13 @@
 "use client";
+import {
+  ArrowDownCircleIcon,
+  ArrowPathIcon,
+  ArrowUpCircleIcon,
+  DocumentTextIcon,
+} from "@heroicons/react/24/outline";
 import { PlusIcon } from "@heroicons/react/24/solid";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
-import ArrowDownCircleIcon from "@/components/icons/arrow-down-circle-icon";
-import ArrowUpCircleIcon from "@/components/icons/arrow-up-circle-icon";
-import FileDiffIcon from "@/components/icons/file-diff-icon";
-import IconGitPullRequest from "@/components/icons/git-pull-request-icon";
 import { Breadcrumbs, BreadcrumbsItem } from "@/components/ui/breadcrumbs";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
@@ -170,7 +172,7 @@ export function AppSidebarNav() {
           onPress={handlePull}
           isDisabled={isLoading || !sessionId}
         >
-          <ArrowDownCircleIcon size="14px" />
+          <ArrowDownCircleIcon className="size-3.5" />
           {isPulling ? "Pulling..." : "Pull"}
         </Button>
         <Button
@@ -180,7 +182,7 @@ export function AppSidebarNav() {
           onPress={handlePush}
           isDisabled={isLoading || !sessionId}
         >
-          <ArrowUpCircleIcon size="14px" />
+          <ArrowUpCircleIcon className="size-3.5" />
           {isPushing ? "Pushing..." : "Push"}
         </Button>
         <Button
@@ -190,7 +192,7 @@ export function AppSidebarNav() {
           onPress={handleCreatePR}
           isDisabled={isLoading || !sessionId}
         >
-          <IconGitPullRequest size="14px" />
+          <ArrowPathIcon className="size-3.5" />
           {isCreatingPR ? "Creating..." : "Create PR"}
         </Button>
         <Button
@@ -199,7 +201,7 @@ export function AppSidebarNav() {
           className="uppercase font-mono text-muted-fg hover:text-fg"
           onPress={() => router.push("/diff")}
         >
-          <FileDiffIcon className="size-3.5" />
+          <DocumentTextIcon className="size-3.5" />
           Diff
         </Button>
         <Button
