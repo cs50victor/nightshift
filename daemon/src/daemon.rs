@@ -6,6 +6,7 @@ use crate::update;
 
 const UPDATE_INTERVAL: Duration = Duration::from_secs(3600);
 const OPENCODE_PORT: u16 = 19276;
+const PROXY_PORT: u16 = OPENCODE_PORT + 1;
 
 pub async fn run() -> Result<()> {
     tracing::info!("starting nightshift daemon v{}", env!("CARGO_PKG_VERSION"));
@@ -62,6 +63,11 @@ pub async fn run() -> Result<()> {
     tokio::select! {
         status = child.wait() => {
             tracing::error!("opencode exited: {:?}, daemon will exit", status);
+            std::process::exit(1);
+        }
+        result = crate::proxy::serve(OPENCODE_PORT, PROXY_PORT) => {
+            tracing::error!("proxy server failed: {:?}", result);
+            child.kill().await.ok();
             std::process::exit(1);
         }
         _ = signal::ctrl_c() => {

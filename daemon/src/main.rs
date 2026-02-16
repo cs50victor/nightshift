@@ -1,4 +1,5 @@
 mod daemon;
+mod proxy;
 mod update;
 
 use clap::{Parser, Subcommand};
