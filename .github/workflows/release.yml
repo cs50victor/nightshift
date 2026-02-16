@@ -28,15 +28,15 @@ jobs:
         include:
           - target: aarch64-apple-darwin
             os: macos-latest
-            artifact_name: nightshift-darwin-arm64
+            artifact_name: nightshift-daemon-aarch64-apple-darwin
 
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
-            artifact_name: nightshift-linux-x64
+            artifact_name: nightshift-daemon-x86_64-unknown-linux-gnu
 
           - target: x86_64-pc-windows-msvc
             os: windows-latest
-            artifact_name: nightshift-windows-x64.exe
+            artifact_name: nightshift-daemon-x86_64-pc-windows-msvc.exe
 
     steps:
       - uses: actions/checkout@v4
