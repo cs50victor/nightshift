@@ -201,7 +201,7 @@ const CommandMenuList = <T extends object>({
     <CollectionRendererContext.Provider value={renderer}>
       <MenuPrimitive
         className={cx(
-          "grid max-h-full flex-1 grid-cols-[auto_1fr] content-start overflow-y-auto border-t p-2 sm:max-h-110 *:[[role=group]]:mb-6 *:[[role=group]]:last:mb-0",
+          "grid max-h-full flex-1 grid-cols-[auto_1fr] content-start overflow-y-auto border-t p-2 sm:max-h-110",
           className,
         )}
         {...props}
@@ -283,7 +283,7 @@ const CommandMenuSeparator = ({
   className,
   ...props
 }: React.ComponentProps<typeof MenuSeparator>) => (
-  <MenuSeparator className={twMerge("-mx-2", className)} {...props} />
+  <MenuSeparator className={twMerge("-mx-2 my-2", className)} {...props} />
 );
 
 const CommandMenuFooter = ({
