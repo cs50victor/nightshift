@@ -1,0 +1,107 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      ui: ${{ steps.filter.outputs.ui }}
+      server: ${{ steps.filter.outputs.server }}
+      daemon: ${{ steps.filter.outputs.daemon }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            ui:
+              - 'ui/**'
+            server:
+              - 'server/**'
+            daemon:
+              - 'daemon/**'
+
+  ui:
+    needs: changes
+    if: needs.changes.outputs.ui == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        working-directory: ui
+        run: bun install --frozen-lockfile
+
+      - name: Lint
+        working-directory: ui
+        run: bun run lint
+
+      - name: Type check
+        working-directory: ui
+        run: bun run typecheck
+
+      - name: Build
+        working-directory: ui
+        run: bun run build
+
+  server:
+    needs: changes
+    if: needs.changes.outputs.server == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        working-directory: server
+        run: bun install --frozen-lockfile
+
+      - name: Test
+        working-directory: server
+        run: bun test
+
+      - name: Build check
+        working-directory: server
+        run: bun build src/index.ts --outdir dist --target bun
+
+  daemon:
+    needs: changes
+    if: needs.changes.outputs.daemon == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: daemon
+
+      - name: Format check
+        working-directory: daemon
+        run: cargo fmt -- --check
+
+      - name: Lint
+        working-directory: daemon
+        run: cargo clippy -- -D warnings
+
+      - name: Test
+        working-directory: daemon
+        run: cargo test
+
+      - name: Build
+        working-directory: daemon
+        run: cargo build
