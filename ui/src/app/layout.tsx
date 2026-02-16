@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import "@fontsource-variable/inter";
 import "@fontsource-variable/geist-mono";
 import "@fontsource/geist-sans";
 import "./globals.css";
