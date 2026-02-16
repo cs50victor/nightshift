@@ -21,12 +21,29 @@ export default function DiffPage() {
     if (!data?.diff) return [];
     try {
       const patches = parsePatchFiles(data.diff);
-      // Flatten all files from all patches
       return patches.flatMap((patch) => patch.files);
     } catch {
       return [];
     }
   }, [data?.diff]);
+
+  const summary = useMemo(() => {
+    let additions = 0;
+    let deletions = 0;
+    let newFiles = 0;
+    let modified = 0;
+    let deleted = 0;
+    for (const file of files) {
+      if (file.type === "new") newFiles++;
+      else if (file.type === "deleted") deleted++;
+      else modified++;
+      for (const hunk of file.hunks) {
+        additions += hunk.additionLines;
+        deletions += hunk.deletionLines;
+      }
+    }
+    return { additions, deletions, newFiles, modified, deleted };
+  }, [files]);
 
   if (isLoading) {
     return (
@@ -63,7 +80,17 @@ export default function DiffPage() {
   return (
     <div className="-m-4 flex h-full flex-col">
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
-        <h1 className="text-lg font-semibold">Git Diff</h1>
+        <div className="flex items-center gap-4">
+          <h1 className="text-lg font-semibold">Git Diff</h1>
+          <div className="flex items-center gap-3 text-xs font-mono text-muted-fg">
+            <span>{files.length} {files.length === 1 ? "file" : "files"}</span>
+            {summary.newFiles > 0 && <span className="text-success">+{summary.newFiles} new</span>}
+            {summary.modified > 0 && <span className="text-warning">{summary.modified} modified</span>}
+            {summary.deleted > 0 && <span className="text-danger">{summary.deleted} deleted</span>}
+            <span className="text-success">+{summary.additions}</span>
+            <span className="text-danger">-{summary.deletions}</span>
+          </div>
+        </div>
         <Button intent="secondary" size="sm" onPress={() => mutate()}>
           <ArrowPathIcon className="size-4" />
           Refresh
