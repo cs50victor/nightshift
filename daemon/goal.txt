@@ -1,0 +1,384 @@
+NIGHTSHIFT DAEMON -- GOAL
+=========================
+
+The daemon is a persistent local process that bridges a remote nightshift
+server with local AI coding agents (Claude Code sessions managed via tmux).
+It runs as a launchd/systemd service and self-updates from GitHub Releases.
+
+
+HIGH-LEVEL RESPONSIBILITIES
+----------------------------
+
+1. CONNECT to the nightshift server over WebSocket.
+2. RECEIVE task messages from the server and inject them into a local
+   AI planner session.
+3. REPORT status updates (working, waiting, done) back to the server.
+4. SYNC local agent state (teams, tasks, tool calls) to the server so
+   the dashboard reflects what every node is doing in real time.
+5. SELF-UPDATE the binary from GitHub Releases (already implemented).
+
+
+ARCHITECTURE
+------------
+
+The daemon spawns several concurrent tasks on the tokio runtime:
+
+    ┌─────────────────────────────────────────────────────┐
+    │                    daemon::run()                     │
+    │                                                     │
+    │  ┌──────────┐  ┌──────────┐  ┌───────────────────┐ │
+    │  │ ws task   │  │ api task │  │ agent_state task  │ │
+    │  │ (ws.rs)   │  │ (api.rs) │  │ (agent_state/)   │ │
+    │  └─────┬─────┘  └────┬─────┘  └────────┬──────────┘ │
+    │        │              │                 │            │
+    │        ▼              ▼                 ▼            │
+    │   incoming_rx    status_rx         outgoing_tx       │
+    │        │              │                 │            │
+    │        └──────────────┴─────────────────┘            │
+    │                       │                              │
+    │                  main select!                        │
+    │                       │                              │
+    │              ┌────────┴────────┐                     │
+    │              │  planner inject │                     │
+    │              │  (planner.rs)   │                     │
+    │              └─────────────────┘                     │
+    └─────────────────────────────────────────────────────┘
+
+Each component:
+
+ws task       -- Maintains a persistent WebSocket to the server.
+                 Reconnects with exponential backoff (1s..30s).
+                 Sends 30s keepalive pings.
+                 Feeds incoming messages to an unbounded channel.
+
+api task      -- Local HTTP server (axum, port 4097) with a single
+                 POST /status endpoint. AI agents call this to report
+                 message status transitions.
+
+agent_state   -- Watches ~/.claude/teams/ and ~/.claude/tasks/ via the
+                 notify crate. Scans team configs, task files, and inboxes.
+                 Derives per-agent status (busy/idle/retry) from task state
+                 and tmux pane liveness. Emits delta WebSocket messages.
+
+planner       -- Wraps the local AI server's HTTP API. Creates a session
+                 at startup, then injects incoming messages via
+                 POST /session/{id}/prompt_async.
+
+main loop     -- tokio::select! over incoming_rx and status_rx.
+                 Routes server messages to planner injection.
+                 Routes local status updates to the outgoing WS channel.
+
+
+WEBSOCKET PROTOCOL
+------------------
+
+All messages are JSON with a "type" field (snake_case tag).
+
+Daemon -> Server:
+
+    // Register on connect
+    { "type": "register", "nodeId": "node_abc", "nodeName": "MacBook Pro" }
+
+    // Acknowledge message delivery
+    { "type": "ack_delivered", "messageId": "msg_xyz" }
+
+    // Report status change (from local API)
+    { "type": "status_update", "messageId": "msg_xyz", "status": "working" }
+    { "type": "status_update", "messageId": "msg_xyz", "status": "done",
+      "response": "Here is your app" }
+    { "type": "status_update", "messageId": "msg_xyz", "status": "waiting",
+      "question": "PostgreSQL or SQLite?" }
+
+    // Agent state sync
+    { "type": "agent_sync", "sessions": [...] }
+    { "type": "agent_status", "sessionId": "ses_x", "status": "busy" }
+    { "type": "agent_todo", "sessionId": "ses_x", "todos": [...] }
+    { "type": "agent_tool", "sessionId": "ses_x", "tool": "edit",
+      "state": "running", "metadata": { "filePath": "src/main.rs" } }
+
+    // Keepalive
+    { "type": "ping" }
+
+Server -> Daemon:
+
+    // New task message
+    { "type": "new_message", "message": {
+        "id": "msg_abc", "content": "Build a todo app", "createdAt": 1706500000000
+    }}
+
+    // Reply to a waiting message
+    { "type": "reply", "messageId": "msg_abc", "content": "Use PostgreSQL",
+      "createdAt": 1706500001000 }
+
+    // Server ack
+    { "type": "ack", "messageId": "msg_abc" }
+    { "type": "pong" }
+
+
+WS MESSAGE ENUM (types.rs)
+--------------------------
+
+    #[derive(Debug, Clone, Serialize, Deserialize)]
+    #[serde(tag = "type", rename_all = "snake_case")]
+    pub enum WsMessage {
+        Register {
+            #[serde(rename = "nodeId")]
+            node_id: String,
+            #[serde(rename = "nodeName")]
+            node_name: String,
+        },
+        NewMessage {
+            message: NewMessagePayload,
+        },
+        AckDelivered {
+            #[serde(rename = "messageId")]
+            message_id: String,
+        },
+        StatusUpdate {
+            #[serde(rename = "messageId")]
+            message_id: String,
+            status: String,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            response: Option<String>,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            question: Option<String>,
+        },
+        Reply {
+            #[serde(rename = "messageId")]
+            message_id: String,
+            content: String,
+            #[serde(rename = "createdAt")]
+            created_at: u64,
+        },
+        Ack {
+            #[serde(rename = "messageId")]
+            message_id: String,
+        },
+        Ping {},
+        Pong {},
+        AgentSync { sessions: Vec<AgentSession> },
+        AgentStatus {
+            #[serde(rename = "sessionId")]
+            session_id: String,
+            status: String,
+        },
+        AgentTodo {
+            #[serde(rename = "sessionId")]
+            session_id: String,
+            todos: Vec<Todo>,
+        },
+        AgentTool {
+            #[serde(rename = "sessionId")]
+            session_id: String,
+            tool: String,
+            state: String,
+            metadata: serde_json::Value,
+        },
+    }
+
+
+WS LOOP (ws.rs)
+---------------
+
+    pub async fn run_ws_loop(
+        url: String,
+        node_id: String,
+        node_name: String,
+        incoming_tx: mpsc::UnboundedSender<WsMessage>,
+        mut outgoing_rx: mpsc::Receiver<WsMessage>,
+    ) {
+        let mut backoff_ms: u64 = 1000;
+        let max_backoff_ms: u64 = 30_000;
+
+        loop {
+            match connect_async(&url).await {
+                Ok((ws_stream, _)) => {
+                    backoff_ms = 1000;
+                    let (mut write, mut read) = ws_stream.split();
+                    let mut ping_interval = tokio::time::interval(Duration::from_secs(30));
+
+                    // Send register message
+                    let register = WsMessage::Register { node_id, node_name };
+                    write.send(WsRawMessage::Text(serde_json::to_string(&register)?)).await;
+
+                    loop {
+                        tokio::select! {
+                            msg = read.next() => { /* parse, forward to incoming_tx */ }
+                            Some(out_msg) = outgoing_rx.recv() => { /* serialize, send */ }
+                            _ = ping_interval.tick() => { /* send ping */ }
+                        }
+                    }
+                }
+                Err(e) => { /* log error */ }
+            }
+
+            // Exponential backoff
+            sleep(Duration::from_millis(backoff_ms)).await;
+            backoff_ms = (backoff_ms * 2).min(max_backoff_ms);
+        }
+    }
+
+Key: incoming channel is UNBOUNDED to prevent ping starvation. If it were
+bounded(64), a burst of 200 messages blocks the select! loop inside the
+send().await arm, starving the ping timer and causing server-side timeouts.
+
+
+MAIN LOOP (daemon.rs)
+---------------------
+
+    loop {
+        tokio::select! {
+            Some(ws_msg) = incoming_rx.recv() => {
+                match ws_msg {
+                    WsMessage::NewMessage { message } => {
+                        // Ack delivery immediately
+                        outgoing_tx.send(WsMessage::AckDelivered {
+                            message_id: message.id.clone(),
+                        }).await;
+
+                        // Inject into planner with concurrency + timeout guard
+                        let content = format!(
+                            "<nightshift-message id=\"{}\">\n{}\n</nightshift-message>",
+                            message.id, message.content
+                        );
+                        spawn_inject(content, "message", message.id);
+                    }
+                    WsMessage::Reply { message_id, content, .. } => {
+                        let content = format!(
+                            "<nightshift-reply message-id=\"{}\">\n{}\n</nightshift-reply>",
+                            message_id, content
+                        );
+                        spawn_inject(content, "reply", message_id);
+                    }
+                    _ => {}
+                }
+            }
+            Some(status_update) = status_rx.recv() => {
+                outgoing_tx.send(WsMessage::StatusUpdate { ... }).await;
+            }
+        }
+    }
+
+
+INJECT BACKPRESSURE
+-------------------
+
+Planner injection is guarded by a semaphore(10) and a 10s timeout per call:
+
+    let inject_semaphore = Arc::new(Semaphore::new(10));
+    let inject_timeout = Duration::from_secs(10);
+
+    let spawn_inject = |content, label, id| {
+        let planner = planner.clone();
+        let semaphore = inject_semaphore.clone();
+        tokio::spawn(async move {
+            let _permit = semaphore.acquire().await?;
+            match tokio::time::timeout(inject_timeout, planner.inject_message(&content)).await {
+                Ok(Ok(())) => {}
+                Ok(Err(e)) => tracing::error!("inject failed: {}", e),
+                Err(_) => tracing::error!("inject timed out"),
+            }
+        });
+    };
+
+
+AGENT STATE SYNC (agent_state/)
+-------------------------------
+
+Watches ~/.claude/teams/ and ~/.claude/tasks/ for file changes via notify.
+On each change (debounced 100ms):
+
+1. Scan all team config.json files to discover agents (lead + teammates).
+2. Load task files per team, map ownership to agents.
+3. Load inbox files per agent for unread message detection.
+4. Check tmux pane liveness to detect dead teammates.
+5. Derive status: busy (has in_progress task), retry (tmux dead + pending
+   work), idle (otherwise).
+6. Diff against previous snapshot. Emit only changed fields as delta
+   WsMessages (AgentStatus, AgentTodo, AgentTool). Full AgentSync on
+   membership changes or every 30s heartbeat.
+
+
+CONFIG (config.rs)
+------------------
+
+File: ~/.nightshift/config.json
+
+    {
+        "server": "https://nightshift.fly.dev",
+        "nodeId": "node_a1b2c3d4e5f6",
+        "nodeName": "MacBook Pro"
+    }
+
+Auto-generated on first run with --server flag. node_id derived from
+machine-uid. node_name from scutil --get ComputerName (macOS) or hostname.
+
+Env var overrides: NIGHTSHIFT_SERVER, NIGHTSHIFT_NODE_ID, NIGHTSHIFT_NODE_NAME.
+
+
+LOCAL API (api.rs)
+------------------
+
+Axum server on 127.0.0.1:4097. Single endpoint:
+
+    POST /status
+    { "messageId": "msg_abc", "status": "working" }
+    { "messageId": "msg_abc", "status": "done", "response": "..." }
+    { "messageId": "msg_abc", "status": "waiting", "question": "..." }
+
+    -> { "success": true }
+
+AI agents call this locally. The daemon forwards it over WS.
+
+
+PLANNER (planner.rs)
+--------------------
+
+Wraps the local AI server (e.g. opencode) HTTP API:
+
+    POST /session         -> creates session, returns { "id": "..." }
+    POST /session/{id}/prompt_async
+        { "parts": [{ "type": "text", "text": "..." }] }
+
+The daemon creates one planner session at startup and injects all incoming
+messages into it.
+
+
+CLI SUBCOMMANDS
+---------------
+
+Agent-facing (unrestricted):
+    nightshift-daemon update-status <id> <status> [--response] [--question]
+    nightshift-daemon daemon [--server <url>]
+    nightshift-daemon update
+
+Human-facing (requires NIGHTSHIFT_I_AM_HUMAN):
+    nightshift-daemon send <content> [--node <id>]
+    nightshift-daemon status <id>
+    nightshift-daemon queue
+    nightshift-daemon clear-queue
+    nightshift-daemon nodes
+    nightshift-daemon dashboard
+    nightshift-daemon node <id> [--watch]
+    nightshift-daemon reply <id> <content>
+    nightshift-daemon install-service
+
+
+DESIGN DECISIONS
+----------------
+
+- No process supervisor in the daemon. The OS service manager (launchd/
+  systemd) restarts the daemon. The daemon restarts the AI server if it
+  dies. Two layers of restart, no reimplementation.
+
+- Unbounded channel for incoming WS. Bounded channels deadlock under
+  message bursts because send().await blocks the select! loop, starving
+  pings. Backpressure is applied at the inject layer instead (semaphore).
+
+- Restricted mode by default. AI agents should only be able to report
+  status. Human-facing commands (send, queue, dashboard) are hidden unless
+  NIGHTSHIFT_I_AM_HUMAN is set. Prevents agents from self-sending messages.
+
+- File-watcher agent state (not polling the AI server). Reads Claude Code's
+  own team/task JSON files from disk. Zero coupling to the AI server's API
+  for state sync. Works even if the AI server is unresponsive.
