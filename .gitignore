@@ -3,4 +3,5 @@ node_modules
 dist
 target
 *.lock
+!Cargo.lock
 *.tsbuildinfo
