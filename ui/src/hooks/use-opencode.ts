@@ -1,6 +1,5 @@
 "use client";
 import useSWR from "swr";
-import { useInstanceStore } from "@/stores/instance-store";
 
 const fetcher = async (url: string) => {
   const res = await fetch(url);
@@ -10,67 +9,36 @@ const fetcher = async (url: string) => {
   return res.json();
 };
 
-function usePort() {
-  const instance = useInstanceStore((s) => s.instance);
-  return instance?.port ?? null;
-}
-
-export function useInstances() {
-  return useSWR("/api/instances", fetcher);
+export function useNodes() {
+  return useSWR("/api/nodes", fetcher);
 }
 
 export function useSessions() {
-  const port = usePort();
-
-  return useSWR(port ? `/api/opencode/${port}/sessions` : null, fetcher);
+  return useSWR("/api/opencode/session/list", fetcher);
 }
 
 export function useSession(id: string | null) {
-  const port = usePort();
-
-  return useSWR(
-    port && id ? `/api/opencode/${port}/session/${id}` : null,
-    fetcher,
-  );
-}
-
-export function useSessionMessages(id: string | null) {
-  const port = usePort();
-
-  return useSWR(
-    port && id ? `/api/opencode/${port}/session/${id}/messages` : null,
-    fetcher,
-  );
+  return useSWR(id ? `/api/opencode/session/${id}` : null, fetcher);
 }
 
 export function useConfig() {
-  const port = usePort();
-
-  return useSWR(port ? `/api/opencode/${port}/config` : null, fetcher);
+  return useSWR("/api/opencode/config", fetcher);
 }
 
 export function useProviders() {
-  const port = usePort();
-
-  return useSWR(port ? `/api/opencode/${port}/providers` : null, fetcher);
+  return useSWR("/api/opencode/config/providers", fetcher);
 }
 
 export function useAgents() {
-  const port = usePort();
-
-  return useSWR(port ? `/api/opencode/${port}/agents` : null, fetcher);
+  return useSWR("/api/opencode/app/agent/list", fetcher);
 }
 
 export function useHealth() {
-  const port = usePort();
-
-  return useSWR(port ? `/api/opencode/${port}/health` : null, fetcher);
+  return useSWR("/api/opencode/config", fetcher);
 }
 
 export function useCurrentProject() {
-  const port = usePort();
-
-  return useSWR(port ? `/api/opencode/${port}/project/current` : null, fetcher);
+  return useSWR("/api/opencode/project/current", fetcher);
 }
 
 export function useHostname() {
@@ -78,12 +46,8 @@ export function useHostname() {
 }
 
 export function useCreateSession() {
-  const port = usePort();
-
   return async (title?: string) => {
-    if (!port) throw new Error("No instance selected");
-
-    const res = await fetch(`/api/opencode/${port}/session/create`, {
+    const res = await fetch("/api/opencode/session", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title }),
@@ -98,12 +62,8 @@ export function useCreateSession() {
 }
 
 export function useDeleteSession() {
-  const port = usePort();
-
   return async (sessionId: string) => {
-    if (!port) throw new Error("No instance selected");
-
-    const res = await fetch(`/api/opencode/${port}/session/${sessionId}`, {
+    const res = await fetch(`/api/opencode/session/${sessionId}`, {
       method: "DELETE",
     });
 
@@ -116,10 +76,8 @@ export function useDeleteSession() {
 }
 
 export function useGitDiff(path?: string | null) {
-  const port = usePort();
-
   return useSWR<{ diff: string; worktree: string }>(
-    port && path ? `/api/opencode/${port}/git/diff?path=${encodeURIComponent(path)}` : null,
+    path ? `/api/git/diff?path=${encodeURIComponent(path)}` : null,
     fetcher,
   );
 }

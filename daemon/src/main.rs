@@ -1,4 +1,5 @@
 mod daemon;
+mod nodes;
 mod proxy;
 mod update;
 

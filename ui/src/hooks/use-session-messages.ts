@@ -1,6 +1,5 @@
 "use client";
 import useSWR, { mutate } from "swr";
-import { useInstanceStore } from "@/stores/instance-store";
 
 export interface Message {
   id: string;
@@ -52,17 +51,10 @@ const fetcher = async (url: string): Promise<MessageWithParts[]> => {
   return data || [];
 };
 
-function usePort() {
-  const instance = useInstanceStore((s) => s.instance);
-  return instance?.port ?? null;
-}
-
 export function useSessionMessages(sessionId: string | undefined) {
-  const port = usePort();
-  const key =
-    port && sessionId
-      ? `/api/opencode/${port}/session/${sessionId}/messages`
-      : null;
+  const key = sessionId
+    ? `/api/opencode/session/${sessionId}/message/list`
+    : null;
 
   const {
     data,
@@ -83,20 +75,19 @@ export function useSessionMessages(sessionId: string | undefined) {
   };
 }
 
-export function getMessagesKey(port: number, sessionId: string) {
-  return `/api/opencode/${port}/session/${sessionId}/messages`;
+export function getMessagesKey(sessionId: string) {
+  return `/api/opencode/session/${sessionId}/message/list`;
 }
 
-export function mutateSessionMessages(port: number, sessionId: string) {
-  mutate(getMessagesKey(port, sessionId));
+export function mutateSessionMessages(sessionId: string) {
+  mutate(getMessagesKey(sessionId));
 }
 
 export function addOptimisticMessage(
-  port: number,
   sessionId: string,
   message: MessageWithParts,
 ): () => void {
-  const key = getMessagesKey(port, sessionId);
+  const key = getMessagesKey(sessionId);
   let previousMessages: MessageWithParts[] = [];
 
   mutate(
@@ -114,12 +105,11 @@ export function addOptimisticMessage(
 }
 
 export function updateOptimisticMessage(
-  port: number,
   sessionId: string,
   messageId: string,
   updates: Partial<MessageWithParts>,
 ) {
-  const key = getMessagesKey(port, sessionId);
+  const key = getMessagesKey(sessionId);
 
   mutate(
     key,
@@ -133,12 +123,8 @@ export function updateOptimisticMessage(
   );
 }
 
-export function removeOptimisticMessage(
-  port: number,
-  sessionId: string,
-  messageId: string,
-) {
-  const key = getMessagesKey(port, sessionId);
+export function removeOptimisticMessage(sessionId: string, messageId: string) {
+  const key = getMessagesKey(sessionId);
 
   mutate(
     key,

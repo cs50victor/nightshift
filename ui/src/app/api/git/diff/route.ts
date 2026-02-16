@@ -1,12 +1,10 @@
-import { NextResponse } from "next/server";
-import { opencodeGet, withErrorHandler } from "@/app/api/lib/opencode-client";
 import { exec } from "node:child_process";
 import { promisify } from "node:util";
+import { cookies } from "next/headers";
+import { NextResponse } from "next/server";
 
 const execAsync = promisify(exec);
 const MAX_BUFFER = 10 * 1024 * 1024;
-
-type Ctx = { params: Promise<{ port: string }> };
 
 async function untrackedDiffs(cwd: string): Promise<string> {
   const { stdout } = await execAsync(
@@ -34,22 +32,38 @@ async function untrackedDiffs(cwd: string): Promise<string> {
   return diffs.join("");
 }
 
-export const GET = withErrorHandler<Ctx>(async (req, { params }) => {
-  const { port } = await params;
-  const portNum = Number(port);
-  if (!portNum || isNaN(portNum)) return NextResponse.json({ error: "Invalid port" }, { status: 400 });
-
+export async function GET(req: Request) {
   const pathParam = new URL(req.url).searchParams.get("path");
   let cwd: string;
 
   if (pathParam) {
     cwd = pathParam;
   } else {
-    const project = await opencodeGet(portNum, "/project/current");
-    if (!project?.worktree) {
-      return NextResponse.json({ error: "No project worktree found" }, { status: 404 });
+    const cookieStore = await cookies();
+    const nodeUrl = cookieStore.get("nightshift-node-url")?.value;
+    if (!nodeUrl) {
+      return NextResponse.json({ error: "No node selected" }, { status: 503 });
     }
-    cwd = project.worktree;
+
+    try {
+      const res = await fetch(`${nodeUrl}/project/current`);
+      if (!res.ok) {
+        return NextResponse.json(
+          { error: "Failed to fetch project info" },
+          { status: 502 },
+        );
+      }
+      const project = await res.json();
+      if (!project?.worktree) {
+        return NextResponse.json(
+          { error: "No project worktree found" },
+          { status: 404 },
+        );
+      }
+      cwd = project.worktree;
+    } catch {
+      return NextResponse.json({ error: "Node unreachable" }, { status: 502 });
+    }
   }
 
   try {
@@ -60,6 +74,9 @@ export const GET = withErrorHandler<Ctx>(async (req, { params }) => {
     return NextResponse.json({ diff: tracked + untracked, worktree: cwd });
   } catch (error) {
     const err = error as { stderr?: string; message?: string };
-    return NextResponse.json({ error: err.stderr || err.message || "Failed to get git diff" }, { status: 500 });
+    return NextResponse.json(
+      { error: err.stderr || err.message || "Failed to get git diff" },
+      { status: 500 },
+    );
   }
-});
+}

@@ -2,7 +2,6 @@
 import { DocumentIcon } from "@heroicons/react/24/outline";
 import { useEffect, useRef, useState } from "react";
 import useMediaQuery from "@/hooks/use-media-query";
-import { useInstanceStore } from "@/stores/instance-store";
 
 interface FileResult {
   path: string;
@@ -124,8 +123,6 @@ export function FileMentionPopover({
   const listRef = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const { isMobile } = useMediaQuery();
-  const instance = useInstanceStore((s) => s.instance);
-  const port = instance?.port;
 
   useEffect(() => {
     if (isOpen && mentionStart !== null && textareaRef.current) {
@@ -151,7 +148,7 @@ export function FileMentionPopover({
   }, [isOpen, mentionStart, textareaRef]);
 
   useEffect(() => {
-    if (!isOpen || !searchQuery || !port) {
+    if (!isOpen || !searchQuery) {
       setFiles([]);
       onFilesChange?.([]);
       return;
@@ -162,7 +159,7 @@ export function FileMentionPopover({
       setLoading(true);
       try {
         const response = await fetch(
-          `/api/opencode/${port}/files/search?q=${encodeURIComponent(searchQuery)}`,
+          `/api/opencode/file/search?q=${encodeURIComponent(searchQuery)}`,
           { signal: controller.signal },
         );
         if (response.ok) {
@@ -189,7 +186,7 @@ export function FileMentionPopover({
       clearTimeout(debounceTimer);
       controller.abort();
     };
-  }, [isOpen, searchQuery, port, onFilesChange]);
+  }, [isOpen, searchQuery, onFilesChange]);
 
   useEffect(() => {
     if (listRef.current && files.length > 0) {

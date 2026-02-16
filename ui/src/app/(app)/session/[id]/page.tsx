@@ -1,43 +1,42 @@
 "use client";
+import { Ripples } from "ldrs/react";
 import { useParams } from "next/navigation";
-import { useEffect, useRef, useState, useCallback, memo } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Ripples } from "ldrs/react";
 import "ldrs/react/Ripples.css";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
-import { Loader } from "@/components/ui/loader";
+import type { Session } from "@opencode-ai/sdk";
 import { AgentSelect } from "@/components/agent-select";
-import { ModelSelect } from "@/components/model-select";
 import {
   FileMentionPopover,
   useFileMention,
 } from "@/components/file-mention-popover";
 import IconBadgeSparkle from "@/components/icons/badge-sparkle-icon";
-import IconUser from "@/components/icons/user-icon";
-import IconMagnifier from "@/components/icons/magnifier-icon";
 import IconEye from "@/components/icons/eye-icon";
-import IconPen from "@/components/icons/pen-icon";
 import IconSquareFeather from "@/components/icons/feather-icon";
+import IconMagnifier from "@/components/icons/magnifier-icon";
+import IconPen from "@/components/icons/pen-icon";
 import SendIcon from "@/components/icons/send-icon";
-import { useAgentStore } from "@/stores/agent-store";
-import { useInstanceStore } from "@/stores/instance-store";
-import { useModelStore } from "@/stores/model-store";
+import IconUser from "@/components/icons/user-icon";
+import { ModelSelect } from "@/components/model-select";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Loader } from "@/components/ui/loader";
+import { Textarea } from "@/components/ui/textarea";
 import { useBreadcrumb } from "@/contexts/breadcrumb-context";
-import {
-  useSessionMessages,
-  addOptimisticMessage,
-  updateOptimisticMessage,
-  removeOptimisticMessage,
-  mutateSessionMessages,
-  type MessageWithParts,
-  type Part,
-  type ToolPart,
-} from "@/hooks/use-session-messages";
 import { useSessions } from "@/hooks/use-opencode";
-import type { Session } from "@opencode-ai/sdk";
+import {
+  addOptimisticMessage,
+  type MessageWithParts,
+  mutateSessionMessages,
+  type Part,
+  removeOptimisticMessage,
+  type ToolPart,
+  updateOptimisticMessage,
+  useSessionMessages,
+} from "@/hooks/use-session-messages";
+import { useAgentStore } from "@/stores/agent-store";
+import { useModelStore } from "@/stores/model-store";
 
 interface QueuedMessage {
   id: string;
@@ -215,8 +214,6 @@ function hasVisibleContent(message: MessageWithParts): boolean {
 export default function SessionPage() {
   const params = useParams();
   const sessionId = params.id as string;
-  const instance = useInstanceStore((s) => s.instance);
-  const port = instance?.port ?? 0;
 
   const {
     messages,
@@ -303,6 +300,7 @@ export default function SessionPage() {
     }
   }, [hasScrolledInitially, loading, messages.length, scrollToBottom]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentionally resets scroll state when session changes
   useEffect(() => {
     setHasScrolledInitially(false);
     isNearBottomRef.current = true;
@@ -310,16 +308,16 @@ export default function SessionPage() {
 
   const sendMessage = useCallback(
     async (messageText: string, messageId: string) => {
-      if (!sessionId || !port) return;
+      if (!sessionId) return;
 
       try {
         const response = await fetch(
-          `/api/opencode/${port}/session/${sessionId}/prompt`,
+          `/api/opencode/session/${sessionId}/prompt`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              text: messageText,
+              parts: [{ type: "text", text: messageText }],
               model: selectedAgent ? undefined : selectedModel,
               agent: selectedAgent,
             }),
@@ -330,21 +328,21 @@ export default function SessionPage() {
           throw new Error("Failed to send message");
         }
 
-        mutateSessionMessages(port, sessionId);
+        mutateSessionMessages(sessionId);
         isNearBottomRef.current = true;
         mutateSessions();
       } catch (err) {
         setSendError(
           err instanceof Error ? err.message : "Failed to send message",
         );
-        removeOptimisticMessage(port, sessionId, messageId);
+        removeOptimisticMessage(sessionId, messageId);
       }
     },
-    [sessionId, port, mutateSessions, selectedModel, selectedAgent],
+    [sessionId, mutateSessions, selectedModel, selectedAgent],
   );
 
   const processQueue = useCallback(async () => {
-    if (isProcessingQueue.current || !sessionId || !port) return;
+    if (isProcessingQueue.current || !sessionId) return;
 
     isProcessingQueue.current = true;
     setSending(true);
@@ -364,7 +362,7 @@ export default function SessionPage() {
 
       if (!nextMessage) break;
 
-      updateOptimisticMessage(port, sessionId, nextMessage.id, {
+      updateOptimisticMessage(sessionId, nextMessage.id, {
         isQueued: false,
       });
       await sendMessage(nextMessage.text, nextMessage.id);
@@ -372,7 +370,7 @@ export default function SessionPage() {
 
     isProcessingQueue.current = false;
     setSending(false);
-  }, [sessionId, port, sendMessage]);
+  }, [sessionId, sendMessage]);
 
   useEffect(() => {
     if (messageQueue.length > 0 && !isProcessingQueue.current) {
@@ -382,7 +380,7 @@ export default function SessionPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || !sessionId || !port) return;
+    if (!input.trim() || !sessionId) return;
 
     const messageText = input.trim();
     const messageId = `temp-${Date.now()}`;
@@ -411,7 +409,7 @@ export default function SessionPage() {
       ],
       isQueued: shouldQueue,
     };
-    addOptimisticMessage(port, sessionId, optimisticMessage);
+    addOptimisticMessage(sessionId, optimisticMessage);
 
     setMessageQueue((prev) => [...prev, { id: messageId, text: messageText }]);
 

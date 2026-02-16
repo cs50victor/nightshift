@@ -1,19 +1,18 @@
 "use client";
-import { useState } from "react";
-import { useParams, useRouter } from "next/navigation";
 import { PlusIcon } from "@heroicons/react/24/solid";
-import { Breadcrumbs, BreadcrumbsItem } from "@/components/ui/breadcrumbs";
-import { Button } from "@/components/ui/button";
-import { toast } from "@/components/ui/toast";
+import { useParams, useRouter } from "next/navigation";
+import { useState } from "react";
 import ArrowDownCircleIcon from "@/components/icons/arrow-down-circle-icon";
 import ArrowUpCircleIcon from "@/components/icons/arrow-up-circle-icon";
 import FileDiffIcon from "@/components/icons/file-diff-icon";
 import IconGitPullRequest from "@/components/icons/git-pull-request-icon";
-import { useInstanceStore } from "@/stores/instance-store";
-import { useModelStore } from "@/stores/model-store";
+import { Breadcrumbs, BreadcrumbsItem } from "@/components/ui/breadcrumbs";
+import { Button } from "@/components/ui/button";
+import { toast } from "@/components/ui/toast";
 import { useBreadcrumb } from "@/contexts/breadcrumb-context";
-import { mutateSessionMessages } from "@/hooks/use-session-messages";
 import { useCreateSession, useSessions } from "@/hooks/use-opencode";
+import { mutateSessionMessages } from "@/hooks/use-session-messages";
+import { useModelStore } from "@/stores/model-store";
 
 const CREATE_PR_PROMPT = `Use gh CLI to create a pull request. Follow these steps:
 
@@ -62,8 +61,6 @@ Make sure to:
 - Report the result of the push operation`;
 
 export function AppSidebarNav() {
-  const instance = useInstanceStore((s) => s.instance);
-  const port = instance?.port ?? 0;
   const { pageTitle } = useBreadcrumb();
   const selectedModel = useModelStore((s) => s.selectedModel);
   const { mutate: mutateSessions } = useSessions();
@@ -79,25 +76,25 @@ export function AppSidebarNav() {
   const sessionId = params.id as string | undefined;
 
   const sendPrompt = async (prompt: string) => {
-    if (!sessionId || !port) {
+    if (!sessionId) {
       toast.error("Please open a session first");
       return;
     }
 
-    const response = await fetch(
-      `/api/opencode/${port}/session/${sessionId}/prompt`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: prompt, model: selectedModel }),
-      },
-    );
+    const response = await fetch(`/api/opencode/session/${sessionId}/prompt`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        parts: [{ type: "text", text: prompt }],
+        model: selectedModel,
+      }),
+    });
 
     if (!response.ok) {
       throw new Error("Failed to send request");
     }
 
-    mutateSessionMessages(port, sessionId);
+    mutateSessionMessages(sessionId);
     mutateSessions();
   };
 
@@ -159,9 +156,7 @@ export function AppSidebarNav() {
   return (
     <nav className="sticky top-0 z-10 flex items-center justify-between border-b bg-bg px-4 py-2">
       <Breadcrumbs>
-        <BreadcrumbsItem href="/">
-          {instance?.name ?? "Instance"}
-        </BreadcrumbsItem>
+        <BreadcrumbsItem href="/">Nightshift</BreadcrumbsItem>
         {pageTitle && <BreadcrumbsItem>{pageTitle}</BreadcrumbsItem>}
       </Breadcrumbs>
       <span className="flex items-center gap-x-2 ml-auto">

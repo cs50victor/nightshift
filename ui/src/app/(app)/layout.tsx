@@ -3,30 +3,58 @@
 import { useEffect, useState } from "react";
 import { AppSidebarNav } from "@/components/app-sidebar-nav";
 import { BreadcrumbProvider } from "@/contexts/breadcrumb-context";
-import { useInstanceStore } from "@/stores/instance-store";
+
+interface Node {
+  id: string;
+  name: string;
+  url: string;
+  startedAt: string;
+}
+
+function getNodeCookie(): string | null {
+  const match = document.cookie.match(/nightshift-node-url=([^;]+)/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+function setNodeCookie(url: string) {
+  // biome-ignore lint/suspicious/noDocumentCookie: Cookie Store API lacks broad support; middleware reads this cookie
+  document.cookie = `nightshift-node-url=${encodeURIComponent(url)}; path=/; max-age=31536000`;
+}
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const instance = useInstanceStore((s) => s.instance);
-  const setInstance = useInstanceStore((s) => s.setInstance);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (instance) {
-      setLoading(false);
-      return;
-    }
-
-    fetch("/api/instances")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.instances?.length > 0) {
-          const inst = data.instances[0];
-          setInstance({ id: inst.id, name: inst.name, port: inst.port });
+    async function init() {
+      try {
+        const existing = getNodeCookie();
+        if (!existing) {
+          const res = await fetch("/api/nodes");
+          const data = await res.json();
+          const nodes: Node[] = data.nodes || [];
+          if (nodes.length === 0) {
+            setError("No nodes available");
+            setLoading(false);
+            return;
+          }
+          setNodeCookie(nodes[0].url);
         }
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, [instance, setInstance]);
+
+        const health = await fetch("/api/opencode/config");
+        if (!health.ok) {
+          setError("Node unreachable");
+          setLoading(false);
+          return;
+        }
+      } catch {
+        setError("Node unreachable");
+      } finally {
+        setLoading(false);
+      }
+    }
+    init();
+  }, []);
 
   if (loading) {
     return (
@@ -36,15 +64,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!instance) {
+  if (error) {
     return (
       <div className="flex h-dvh items-center justify-center">
         <div className="text-center">
-          <h2 className="text-lg font-medium mb-2">
-            No opencode instance running
-          </h2>
+          <h2 className="text-lg font-medium mb-2">{error}</h2>
           <p className="text-muted-fg">
-            Start an opencode instance to get started.
+            Check that a nightshift daemon is running.
           </p>
         </div>
       </div>
