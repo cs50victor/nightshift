@@ -1,16 +1,27 @@
 "use client";
-import { useEffect, useMemo } from "react";
-import { FileDiff } from "@pierre/diffs/react";
-import { parsePatchFiles } from "@pierre/diffs";
-import { Loader } from "@/components/ui/loader";
-import { Button } from "@/components/ui/button";
-import { useGitDiff } from "@/hooks/use-opencode";
-import { useBreadcrumb } from "@/contexts/breadcrumb-context";
 import { ArrowPathIcon } from "@heroicons/react/24/outline";
+import { parsePatchFiles } from "@pierre/diffs";
+import { FileDiff } from "@pierre/diffs/react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useMemo } from "react";
+import { Button } from "@/components/ui/button";
+import { Loader } from "@/components/ui/loader";
+import { useBreadcrumb } from "@/contexts/breadcrumb-context";
+import { useCurrentProject, useGitDiff } from "@/hooks/use-opencode";
 
 export default function DiffPage() {
-  const { data, error, isLoading, mutate } = useGitDiff();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const path = searchParams.get("path");
+  const { data: project } = useCurrentProject();
+  const { data, error, isLoading, mutate } = useGitDiff(path);
   const { setPageTitle } = useBreadcrumb();
+
+  useEffect(() => {
+    if (!path && project?.worktree) {
+      router.replace(`/diff?path=${encodeURIComponent(project.worktree)}`);
+    }
+  }, [path, project?.worktree, router]);
 
   useEffect(() => {
     setPageTitle("Git Diff");
@@ -83,10 +94,18 @@ export default function DiffPage() {
         <div className="flex items-center gap-4">
           <h1 className="text-lg font-semibold">Git Diff</h1>
           <div className="flex items-center gap-3 text-xs font-mono text-muted-fg">
-            <span>{files.length} {files.length === 1 ? "file" : "files"}</span>
-            {summary.newFiles > 0 && <span className="text-success">+{summary.newFiles} new</span>}
-            {summary.modified > 0 && <span className="text-warning">{summary.modified} modified</span>}
-            {summary.deleted > 0 && <span className="text-danger">{summary.deleted} deleted</span>}
+            <span>
+              {files.length} {files.length === 1 ? "file" : "files"}
+            </span>
+            {summary.newFiles > 0 && (
+              <span className="text-success">+{summary.newFiles} new</span>
+            )}
+            {summary.modified > 0 && (
+              <span className="text-warning">{summary.modified} modified</span>
+            )}
+            {summary.deleted > 0 && (
+              <span className="text-danger">{summary.deleted} deleted</span>
+            )}
             <span className="text-success">+{summary.additions}</span>
             <span className="text-danger">-{summary.deletions}</span>
           </div>
@@ -105,6 +124,7 @@ export default function DiffPage() {
             options={{
               diffStyle: "unified",
               diffIndicators: "bars",
+              theme: "github-dark",
             }}
           />
         ))}

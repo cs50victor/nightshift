@@ -34,22 +34,30 @@ async function untrackedDiffs(cwd: string): Promise<string> {
   return diffs.join("");
 }
 
-export const GET = withErrorHandler<Ctx>(async (_req, { params }) => {
+export const GET = withErrorHandler<Ctx>(async (req, { params }) => {
   const { port } = await params;
   const portNum = Number(port);
   if (!portNum || isNaN(portNum)) return NextResponse.json({ error: "Invalid port" }, { status: 400 });
 
-  const project = await opencodeGet(portNum, "/project/current");
-  if (!project?.worktree) {
-    return NextResponse.json({ error: "No project worktree found" }, { status: 404 });
+  const pathParam = new URL(req.url).searchParams.get("path");
+  let cwd: string;
+
+  if (pathParam) {
+    cwd = pathParam;
+  } else {
+    const project = await opencodeGet(portNum, "/project/current");
+    if (!project?.worktree) {
+      return NextResponse.json({ error: "No project worktree found" }, { status: 404 });
+    }
+    cwd = project.worktree;
   }
 
   try {
     const [{ stdout: tracked }, untracked] = await Promise.all([
-      execAsync("git diff HEAD", { cwd: project.worktree, maxBuffer: MAX_BUFFER }),
-      untrackedDiffs(project.worktree),
+      execAsync("git diff HEAD", { cwd, maxBuffer: MAX_BUFFER }),
+      untrackedDiffs(cwd),
     ]);
-    return NextResponse.json({ diff: tracked + untracked, worktree: project.worktree });
+    return NextResponse.json({ diff: tracked + untracked, worktree: cwd });
   } catch (error) {
     const err = error as { stderr?: string; message?: string };
     return NextResponse.json({ error: err.stderr || err.message || "Failed to get git diff" }, { status: 500 });

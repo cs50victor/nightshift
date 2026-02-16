@@ -115,11 +115,11 @@ export function useDeleteSession() {
   };
 }
 
-export function useGitDiff() {
+export function useGitDiff(path?: string | null) {
   const port = usePort();
 
   return useSWR<{ diff: string; worktree: string }>(
-    port ? `/api/opencode/${port}/git/diff` : null,
+    port && path ? `/api/opencode/${port}/git/diff?path=${encodeURIComponent(path)}` : null,
     fetcher,
   );
 }
