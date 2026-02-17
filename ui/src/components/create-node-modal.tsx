@@ -11,18 +11,8 @@ import {
   SheetHeader,
 } from "@/components/ui/sheet";
 import { useCreateSprite, useNodes } from "@/hooks/use-opencode";
+import type { Node } from "@/lib/types";
 import { useNodeStore } from "@/stores/node-store";
-
-interface Node {
-  id: string;
-  name: string;
-  url: string;
-  startedAt: string;
-  os: string;
-  arch: string;
-  daemonVersion: string;
-  spriteName?: string;
-}
 
 interface CreateNodeModalProps {
   isOpen: boolean;

@@ -3,19 +3,9 @@
 import { useEffect, useState } from "react";
 import { AppSidebarNav } from "@/components/app-sidebar-nav";
 import { BreadcrumbProvider } from "@/contexts/breadcrumb-context";
+import type { Node } from "@/lib/types";
 import { useModelStore } from "@/stores/model-store";
 import { useNodeStore } from "@/stores/node-store";
-
-interface Node {
-  id: string;
-  name: string;
-  url: string;
-  startedAt: string;
-  os: string;
-  arch: string;
-  daemonVersion: string;
-  spriteName?: string;
-}
 
 function getNodeCookie(): string | null {
   const match = document.cookie.match(/nightshift-node-url=([^;]+)/);

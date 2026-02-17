@@ -13,19 +13,9 @@ import {
 } from "@/components/ui/menu";
 import { toast } from "@/components/ui/toast";
 import { useDeleteSprite, useNodes } from "@/hooks/use-opencode";
+import type { Node } from "@/lib/types";
 import { useNodeStore } from "@/stores/node-store";
 import { CreateNodeModal } from "./create-node-modal";
-
-interface Node {
-  id: string;
-  name: string;
-  url: string;
-  startedAt: string;
-  os: string;
-  arch: string;
-  daemonVersion: string;
-  spriteName?: string;
-}
 
 function isLocal(url: string) {
   return url.includes("localhost") || url.includes("127.0.0.1");
