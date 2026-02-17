@@ -69,6 +69,17 @@ test-daemon:
 test-server:
     cd server && bun test
 
+[doc('Test sprite setup script in Docker')]
+[group('test')]
+test-sprite-setup:
+    docker run --rm \
+      -v "$(pwd)/server/src/scripts/setup-sprite.sh:/setup.sh:ro" \
+      -e DAEMON_RELEASE_URL="https://github.com/cs50victor/nightshift/releases/latest/download/nightshift-daemon-x86_64-unknown-linux-gnu.tar.gz" \
+      -e NIGHTSHIFT_SERVER_URL="http://localhost:4001" \
+      -e NIGHTSHIFT_PUBLIC_URL="http://localhost:8080" \
+      -e NIGHTSHIFT_PROXY_PORT="8080" \
+      oven/bun:latest bash -c 'apt-get update -qq && apt-get install -y -qq curl > /dev/null 2>&1 && bash /setup.sh'
+
 # --- lint ---
 
 [doc('Run all linters + typecheck')]

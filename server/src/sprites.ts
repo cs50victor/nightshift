@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { SpritesClient } from "@fly/sprites";
 import { nodeExists, removeNode } from "./redis";
 
@@ -6,6 +8,11 @@ const POLL_TIMEOUT_MS = 30000;
 
 const DAEMON_RELEASE_URL =
   "https://github.com/cs50victor/nightshift/releases/latest/download/nightshift-daemon-x86_64-unknown-linux-gnu.tar.gz";
+
+const SETUP_SCRIPT = readFileSync(
+  join(import.meta.dir, "scripts/setup-sprite.sh"),
+  "utf-8",
+);
 
 function getClient(): SpritesClient {
   const token = process.env.SPRITES_TOKEN;
@@ -30,28 +37,16 @@ export async function createSprite(displayName?: string): Promise<{ name: string
   const sprite = await client.createSprite(name);
 
   try {
-    await sprite.exec("bun install -g opencode-ai@1.2.1");
+    const publicUrl = `https://${name}.sprites.dev:8080`;
 
-    await sprite.exec(
-      `mkdir -p ~/.nightshift && curl -fsSL ${DAEMON_RELEASE_URL} | tar -xz -C ~/.nightshift && chmod +x ~/.nightshift/nightshift-daemon`,
-    );
-
-    const publicUrl = `https://${name}.sprites.dev`;
-    const config = JSON.stringify({
-      version: 1,
-      serverUrl,
-      publicUrl: `${publicUrl}:8080`,
-      proxyPort: 8080,
+    await sprite.execFile("bash", ["-c", SETUP_SCRIPT], {
+      env: {
+        DAEMON_RELEASE_URL,
+        NIGHTSHIFT_SERVER_URL: serverUrl,
+        NIGHTSHIFT_PUBLIC_URL: publicUrl,
+        NIGHTSHIFT_PROXY_PORT: "8080",
+      },
     });
-    await sprite.exec(`cat > ~/.nightshift/config.json << 'EOFCFG'\n${config}\nEOFCFG`);
-
-    const serviceBody = JSON.stringify({
-      cmd: "/home/sprite/.nightshift/nightshift-daemon",
-      args: ["daemon"],
-    });
-    await sprite.exec(
-      `curl -s -X PUT http://localhost/v1/services/nightshift -H 'Content-Type: application/json' -d '${serviceBody}'`,
-    );
 
     const nodeId = await pollNodeRegistration(name);
     return { name, nodeId };
