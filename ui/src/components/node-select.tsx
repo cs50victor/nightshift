@@ -30,9 +30,9 @@ export function NodeSelect() {
 
   const nodes: Node[] = data?.nodes ?? [];
 
-  const handleSelect = (url: string) => {
+  const handleSelect = (url: string, id: string) => {
     if (url === activeNodeUrl) return;
-    setActiveNode(url);
+    setActiveNode(url, id);
     window.location.reload();
   };
 
@@ -44,7 +44,7 @@ export function NodeSelect() {
       if (node.url === activeNodeUrl) {
         const remaining = nodes.filter((n) => n.url !== node.url);
         if (remaining.length > 0) {
-          setActiveNode(remaining[0].url);
+          setActiveNode(remaining[0].url, remaining[0].id);
         }
       }
       await mutate();
@@ -71,7 +71,7 @@ export function NodeSelect() {
             <MenuItem
               key={node.id}
               id={node.id}
-              onAction={() => handleSelect(node.url)}
+              onAction={() => handleSelect(node.url, node.id)}
               textValue={node.name}
             >
               <div className="flex w-full items-center justify-between gap-2">

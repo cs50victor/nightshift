@@ -7,6 +7,7 @@ mock.module("../src/redis", () => ({
   addNode: async (node: Node) => { nodes.set(node.id, node); },
   removeNode: async (id: string) => { nodes.delete(id); },
   listNodes: async () => Array.from(nodes.values()),
+  getNode: async (id: string) => nodes.get(id) ?? null,
   nodeExists: async (id: string) => nodes.has(id),
   refreshNodeTTL: async (id: string) => nodes.has(id),
 }));

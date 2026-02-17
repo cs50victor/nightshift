@@ -39,7 +39,7 @@ export function CreateNodeModal({
       const data = await res.json();
       const node = (data.nodes as Node[])?.find((n) => n.id === nodeId);
       if (node) {
-        setActiveNode(node.url);
+        setActiveNode(node.url, node.id);
       }
       await mutateNodes();
       onOpenChange(false);

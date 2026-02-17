@@ -30,7 +30,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             setLoading(false);
             return;
           }
-          setActiveNode(nodes[0].url);
+          setActiveNode(nodes[0].url, nodes[0].id);
         } else {
           useNodeStore.getState().activeNodeUrl !== existing &&
             useNodeStore.setState({ activeNodeUrl: existing });

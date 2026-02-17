@@ -53,6 +53,16 @@ export async function listNodes(): Promise<Node[]> {
   return nodes;
 }
 
+export async function getNode(id: string): Promise<Node | null> {
+  const raw = await redis.get(`node:${id}`);
+  if (raw === null) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
 export async function nodeExists(id: string): Promise<boolean> {
   return redis.exists(`node:${id}`);
 }

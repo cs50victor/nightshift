@@ -1,5 +1,40 @@
-import { addNode, listNodes, removeNode, refreshNodeTTL, type Node } from "./redis";
+import { addNode, getNode, listNodes, removeNode, refreshNodeTTL, type Node } from "./redis";
 import { createSprite, destroySprite, listSprites } from "./sprites";
+
+async function handleProxy(req: Request, nodeId: string, path: string, search: string): Promise<Response> {
+  const node = await getNode(nodeId);
+  if (!node) {
+    return Response.json({ error: "node not found" }, { status: 404 });
+  }
+
+  const target = new URL(path + search, node.url);
+
+  const headers = new Headers(req.headers);
+  headers.delete("host");
+
+  // NOTE(victor): sprite URLs are private -- inject auth so the UI doesn't need the token
+  if (target.hostname.endsWith(".sprites.app") || target.hostname.endsWith(".sprites.dev")) {
+    const token = process.env.SPRITES_TOKEN;
+    if (token) {
+      headers.set("Authorization", `Bearer ${token}`);
+    }
+  }
+
+  const upstream = await fetch(target.toString(), {
+    method: req.method,
+    headers,
+    body: req.body,
+    // @ts-expect-error -- Bun supports duplex streaming for request bodies
+    duplex: "half",
+  });
+
+  // NOTE(victor): pass body stream through directly -- this preserves SSE (text/event-stream)
+  return new Response(upstream.body, {
+    status: upstream.status,
+    statusText: upstream.statusText,
+    headers: upstream.headers,
+  });
+}
 
 const server = Bun.serve({
   port: Number(process.env.PORT ?? 8080),
@@ -58,7 +93,12 @@ const server = Bun.serve({
     },
   },
 
-  fetch() {
+  fetch(req) {
+    const url = new URL(req.url);
+    const match = url.pathname.match(/^\/proxy\/([^/]+)(\/.*)?$/);
+    if (match) {
+      return handleProxy(req, decodeURIComponent(match[1]), match[2] ?? "/", url.search);
+    }
     return Response.json({ error: "not found" }, { status: 404 });
   },
 

@@ -4,7 +4,7 @@ import { SpritesClient } from "@fly/sprites";
 import { nodeExists, removeNode } from "./redis";
 
 const POLL_INTERVAL_MS = 2000;
-const POLL_TIMEOUT_MS = 30000;
+const POLL_TIMEOUT_MS = 60000;
 
 const DAEMON_RELEASE_URL =
   "https://github.com/cs50victor/nightshift/releases/latest/download/nightshift-daemon-x86_64-unknown-linux-gnu";
@@ -14,10 +14,27 @@ const SETUP_SCRIPT = readFileSync(
   "utf-8",
 );
 
-function getClient(): SpritesClient {
+function getToken(): string {
   const token = process.env.SPRITES_TOKEN;
   if (!token) throw new Error("SPRITES_TOKEN not set");
-  return new SpritesClient(token);
+  return token;
+}
+
+function getClient(): SpritesClient {
+  return new SpritesClient(getToken());
+}
+
+// NOTE(victor): SDK doesn't expose the sprite URL in its types.
+// Fetch it from the REST API directly.
+async function getSpriteUrl(name: string): Promise<string> {
+  const res = await fetch(`https://api.sprites.dev/v1/sprites/${encodeURIComponent(name)}`, {
+    headers: { Authorization: `Bearer ${getToken()}` },
+  });
+  if (!res.ok) throw new Error(`failed to get sprite URL: ${res.status}`);
+  const data = await res.json();
+  console.log("[sprite api]", JSON.stringify(data, null, 2));
+  if (!data.url) throw new Error("sprite API returned no url");
+  return data.url;
 }
 
 function getServerUrl(): string {
@@ -41,16 +58,20 @@ export async function createSprite(displayName?: string): Promise<{ name: string
   const sprite = await client.createSprite(name);
 
   try {
-    const publicUrl = `https://${name}.sprites.dev:8080`;
+    const publicUrl = await getSpriteUrl(name);
 
-    await sprite.execFile("bash", ["-c", SETUP_SCRIPT], {
+    const result = await sprite.execFile("bash", ["-c", SETUP_SCRIPT], {
       env: {
+        SPRITE_NAME: name,
         DAEMON_RELEASE_URL,
         NIGHTSHIFT_SERVER_URL: serverUrl,
         NIGHTSHIFT_PUBLIC_URL: publicUrl,
         NIGHTSHIFT_PROXY_PORT: "8080",
       },
     });
+
+    console.log("[sprite setup]", result.stdout);
+    if (result.stderr) console.error("[sprite setup stderr]", result.stderr);
 
     const nodeId = await pollNodeRegistration(name);
     return { name, nodeId };
