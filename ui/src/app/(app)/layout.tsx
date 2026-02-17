@@ -4,12 +4,17 @@ import { useEffect, useState } from "react";
 import { AppSidebarNav } from "@/components/app-sidebar-nav";
 import { BreadcrumbProvider } from "@/contexts/breadcrumb-context";
 import { useModelStore } from "@/stores/model-store";
+import { useNodeStore } from "@/stores/node-store";
 
 interface Node {
   id: string;
   name: string;
   url: string;
   startedAt: string;
+  os: string;
+  arch: string;
+  daemonVersion: string;
+  spriteName?: string;
 }
 
 function getNodeCookie(): string | null {
@@ -17,14 +22,10 @@ function getNodeCookie(): string | null {
   return match ? decodeURIComponent(match[1]) : null;
 }
 
-function setNodeCookie(url: string) {
-  // biome-ignore lint/suspicious/noDocumentCookie: Cookie Store API lacks broad support; middleware reads this cookie
-  document.cookie = `nightshift-node-url=${encodeURIComponent(url)}; path=/; max-age=31536000`;
-}
-
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const setActiveNode = useNodeStore((s) => s.setActiveNode);
 
   useEffect(() => {
     async function init() {
@@ -39,7 +40,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             setLoading(false);
             return;
           }
-          setNodeCookie(nodes[0].url);
+          setActiveNode(nodes[0].url);
+        } else {
+          useNodeStore.getState().activeNodeUrl !== existing &&
+            useNodeStore.setState({ activeNodeUrl: existing });
         }
 
         const health = await fetch("/api/opencode/global/health");
@@ -67,7 +71,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       }
     }
     init();
-  }, []);
+  }, [setActiveNode]);
 
   if (loading) {
     return (

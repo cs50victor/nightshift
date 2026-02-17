@@ -28,8 +28,8 @@ import {
   useSessions,
 } from "@/hooks/use-opencode";
 import { mutateSessionMessages } from "@/hooks/use-session-messages";
-import { useModelStore } from "@/stores/model-store";
 import { useTheme } from "@/providers/theme-provider";
+import { useModelStore } from "@/stores/model-store";
 
 const CREATE_PR_PROMPT = `Use gh CLI to create a pull request. Follow these steps:
 

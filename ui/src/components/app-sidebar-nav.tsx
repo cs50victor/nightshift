@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
 import { useBreadcrumb } from "@/contexts/breadcrumb-context";
 import { useCreateSession } from "@/hooks/use-opencode";
+import { NodeSelect } from "./node-select";
 
 export function AppSidebarNav() {
   const { pageTitle } = useBreadcrumb();
@@ -36,6 +37,7 @@ export function AppSidebarNav() {
         {pageTitle && <BreadcrumbsItem>{pageTitle}</BreadcrumbsItem>}
       </Breadcrumbs>
       <span className="flex items-center gap-x-2 ml-auto">
+        <NodeSelect />
         <Button
           size="xs"
           intent="outline"

@@ -93,3 +93,25 @@ export function useGitDiff(path?: string | null) {
     fetcher,
   );
 }
+
+export function useCreateSprite() {
+  return async () => {
+    const res = await fetch("/api/sprites", { method: "POST" });
+    if (!res.ok) {
+      const data = await res.json().catch(() => null);
+      throw new Error(data?.error || `Sprite creation failed: ${res.status}`);
+    }
+    return res.json() as Promise<{ name: string; nodeId: string }>;
+  };
+}
+
+export function useDeleteSprite() {
+  return async (name: string) => {
+    const res = await fetch(`/api/sprites/${name}`, { method: "DELETE" });
+    if (!res.ok) {
+      const data = await res.json().catch(() => null);
+      throw new Error(data?.error || `Sprite deletion failed: ${res.status}`);
+    }
+    return res.json();
+  };
+}
