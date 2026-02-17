@@ -5,6 +5,7 @@ use tokio::signal;
 use crate::update;
 
 const UPDATE_INTERVAL: Duration = Duration::from_secs(3600);
+const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(60);
 const OPENCODE_CONFIG: &str = include_str!("../opencode.json");
 const OPENCODE_PORT: u16 = 19276;
 const PROXY_PORT: u16 = OPENCODE_PORT + 1;
@@ -47,6 +48,11 @@ pub async fn run() -> Result<()> {
         });
     }
 
+    let cfg = crate::config::load();
+
+    let proxy_port = cfg.as_ref().map(|c| c.proxy_port).unwrap_or(PROXY_PORT);
+    let url_override = cfg.as_ref().map(|c| c.public_url.as_str());
+
     let home = std::env::var("HOME").unwrap_or_else(|_| ".".into());
     let data_dir = std::path::PathBuf::from(home).join(".nightshift");
     std::fs::create_dir_all(&data_dir)?;
@@ -67,17 +73,39 @@ pub async fn run() -> Result<()> {
         child.id().unwrap_or(0)
     );
 
-    let node_id = crate::nodes::register(PROXY_PORT).unwrap_or_else(|e| {
-        tracing::warn!("failed to register node: {e}");
-        String::new()
-    });
+    let (node_id, node) = crate::nodes::register(proxy_port, url_override)?;
+
+    let server_url = cfg.as_ref().map(|c| c.server_url.clone());
+
+    if let Some(ref url) = server_url {
+        if let Err(e) = crate::nodes::register_remote(url, &node).await {
+            tracing::warn!("remote registration failed: {e}");
+        }
+    }
+
+    if let Some(ref url) = server_url {
+        let heartbeat_url = url.clone();
+        let heartbeat_id = node_id.clone();
+        tokio::spawn(async move {
+            let mut interval = tokio::time::interval(HEARTBEAT_INTERVAL);
+            interval.tick().await;
+            loop {
+                interval.tick().await;
+                if let Err(e) =
+                    crate::nodes::heartbeat_remote(&heartbeat_url, &heartbeat_id).await
+                {
+                    tracing::warn!("heartbeat failed: {e}");
+                }
+            }
+        });
+    }
 
     tokio::select! {
         status = child.wait() => {
             tracing::error!("opencode exited: {:?}, daemon will exit", status);
             std::process::exit(1);
         }
-        result = crate::proxy::serve(OPENCODE_PORT, PROXY_PORT, data_dir.to_string_lossy().into_owned()) => {
+        result = crate::proxy::serve(OPENCODE_PORT, proxy_port, data_dir.to_string_lossy().into_owned()) => {
             tracing::error!("proxy server failed: {:?}", result);
             child.kill().await.ok();
             std::process::exit(1);
@@ -89,5 +117,8 @@ pub async fn run() -> Result<()> {
     }
 
     crate::nodes::deregister(&node_id);
+    if let Some(ref url) = server_url {
+        crate::nodes::deregister_remote(url, &node_id).await.ok();
+    }
     Ok(())
 }

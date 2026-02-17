@@ -1,18 +1,14 @@
-import { existsSync, readFileSync } from "node:fs";
-import { homedir } from "node:os";
-import { join } from "node:path";
 import { NextResponse } from "next/server";
 
-const NODES_PATH = join(homedir(), ".nightshift", "nodes.json");
+const SERVER_URL =
+  process.env.NIGHTSHIFT_SERVER_URL ?? "https://nightshift-server.fly.dev";
 
 export async function GET() {
   try {
-    if (!existsSync(NODES_PATH)) {
-      return NextResponse.json({ nodes: [] });
-    }
-    const content = readFileSync(NODES_PATH, "utf-8");
-    const nodes = JSON.parse(content);
-    return NextResponse.json({ nodes });
+    const res = await fetch(`${SERVER_URL}/nodes`, { cache: "no-store" });
+    if (!res.ok) return NextResponse.json({ nodes: [] });
+    const data = await res.json();
+    return NextResponse.json(data);
   } catch {
     return NextResponse.json({ nodes: [] });
   }
