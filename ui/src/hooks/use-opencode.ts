@@ -1,4 +1,5 @@
 "use client";
+import { useNodeStore } from "@/stores/node-store";
 import useSWR from "swr";
 
 const fetcher = async (url: string) => {
@@ -59,6 +60,11 @@ export function useProjectPath() {
 
 export function useCreateSession() {
   return async (title?: string) => {
+    const { activeNodeUrl } = useNodeStore.getState();
+    if (!activeNodeUrl) {
+      throw new Error("No node selected. Select a node before creating a session.");
+    }
+
     const res = await fetch("/api/opencode/session", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -95,8 +101,12 @@ export function useGitDiff(path?: string | null) {
 }
 
 export function useCreateSprite() {
-  return async () => {
-    const res = await fetch("/api/sprites", { method: "POST" });
+  return async (name?: string) => {
+    const res = await fetch("/api/sprites", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    });
     if (!res.ok) {
       const data = await res.json().catch(() => null);
       throw new Error(data?.error || `Sprite creation failed: ${res.status}`);

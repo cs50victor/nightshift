@@ -43,8 +43,9 @@ const server = Bun.serve({
         const sprites = await listSprites();
         return Response.json({ sprites });
       },
-      POST: async () => {
-        const result = await createSprite();
+      POST: async (req) => {
+        const body = await req.json().catch(() => ({}));
+        const result = await createSprite(body.name);
         return Response.json(result, { status: 201 });
       },
     },

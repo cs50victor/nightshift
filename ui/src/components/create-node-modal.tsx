@@ -23,6 +23,7 @@ export function CreateNodeModal({
   isOpen,
   onOpenChange,
 }: CreateNodeModalProps) {
+  const [name, setName] = useState("");
   const [status, setStatus] = useState<"idle" | "creating" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
   const createSprite = useCreateSprite();
@@ -33,7 +34,7 @@ export function CreateNodeModal({
     setStatus("creating");
     setError(null);
     try {
-      const { nodeId } = await createSprite();
+      const { nodeId } = await createSprite(name.trim() || undefined);
       const res = await fetch("/api/nodes");
       const data = await res.json();
       const node = (data.nodes as Node[])?.find((n) => n.id === nodeId);
@@ -73,11 +74,18 @@ export function CreateNodeModal({
         />
         <SheetBody>
           {status === "idle" && (
-            <p className="text-sm text-muted-fg">
-              This will create a new Fly Sprite, install opencode and the
-              nightshift daemon, and register it as a node. This can take up to
-              30 seconds.
-            </p>
+            <div className="flex flex-col gap-3">
+              <label className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium">Name</span>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="e.g. work-laptop"
+                  className="rounded-md border border-border bg-bg px-3 py-1.5 text-sm font-mono placeholder:text-muted-fg focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </label>
+            </div>
           )}
           {status === "creating" && (
             <div className="flex flex-col items-center gap-3 py-8">

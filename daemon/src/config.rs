@@ -22,7 +22,24 @@ fn load_from(path: &Path) -> Option<Config> {
 }
 
 pub fn load() -> Option<Config> {
-    load_from(&config_path())
+    let cfg = load_from(&config_path());
+    if cfg.is_some() {
+        return cfg;
+    }
+
+    #[cfg(debug_assertions)]
+    {
+        tracing::info!("no config file found, using dev defaults");
+        return Some(Config {
+            version: 1,
+            server_url: "http://localhost:4001".into(),
+            public_url: "http://localhost:19277".into(),
+            proxy_port: 19277,
+        });
+    }
+
+    #[cfg(not(debug_assertions))]
+    None
 }
 
 #[cfg(test)]

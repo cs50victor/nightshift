@@ -19,15 +19,18 @@ function getServerUrl(): string {
   return url;
 }
 
-export async function createSprite(): Promise<{ name: string; nodeId: string }> {
+export async function createSprite(displayName?: string): Promise<{ name: string; nodeId: string }> {
   const client = getClient();
   const serverUrl = getServerUrl();
-  const name = `nightshift-${crypto.randomUUID().slice(0, 8)}`;
+  const slug = displayName
+    ? displayName.toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-").slice(0, 30)
+    : crypto.randomUUID().slice(0, 8);
+  const name = `nightshift-${slug}`;
 
   const sprite = await client.createSprite(name);
 
   try {
-    await sprite.exec("bun install -g opencode");
+    await sprite.exec("bun install -g opencode-ai@1.2.1");
 
     await sprite.exec(
       `mkdir -p ~/.nightshift && curl -fsSL ${DAEMON_RELEASE_URL} | tar -xz -C ~/.nightshift && chmod +x ~/.nightshift/nightshift-daemon`,

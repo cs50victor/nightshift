@@ -3,9 +3,14 @@ import { type NextRequest, NextResponse } from "next/server";
 const SERVER_URL =
   process.env.NIGHTSHIFT_SERVER_URL ?? "https://nightshift-server.fly.dev";
 
-export async function POST() {
+export async function POST(req: NextRequest) {
   try {
-    const res = await fetch(`${SERVER_URL}/sprites`, { method: "POST" });
+    const body = await req.json().catch(() => ({}));
+    const res = await fetch(`${SERVER_URL}/sprites`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
     const data = await res.json();
     return NextResponse.json(data, { status: res.status });
   } catch (e) {
