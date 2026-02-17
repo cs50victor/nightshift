@@ -74,7 +74,7 @@ test-server:
 test-sprite-setup:
     docker run --rm \
       -v "$(pwd)/server/src/scripts/setup-sprite.sh:/setup.sh:ro" \
-      -e DAEMON_RELEASE_URL="https://github.com/cs50victor/nightshift/releases/latest/download/nightshift-daemon-x86_64-unknown-linux-gnu.tar.gz" \
+      -e DAEMON_RELEASE_URL="https://github.com/cs50victor/nightshift/releases/latest/download/nightshift-daemon-x86_64-unknown-linux-gnu" \
       -e NIGHTSHIFT_SERVER_URL="http://localhost:4001" \
       -e NIGHTSHIFT_PUBLIC_URL="http://localhost:8080" \
       -e NIGHTSHIFT_PROXY_PORT="8080" \

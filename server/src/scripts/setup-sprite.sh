@@ -14,7 +14,7 @@ bun install -g opencode-ai@1.2.1
 
 echo "--- downloading daemon ---"
 mkdir -p "$NIGHTSHIFT_DIR"
-curl -fsSL "$DAEMON_RELEASE_URL" | tar -xz -C "$NIGHTSHIFT_DIR"
+curl -fsSL -o "$DAEMON_BIN" "$DAEMON_RELEASE_URL"
 chmod +x "$DAEMON_BIN"
 
 echo "--- writing config ---"
