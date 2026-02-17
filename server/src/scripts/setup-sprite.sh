@@ -9,6 +9,8 @@ set -euo pipefail
 NIGHTSHIFT_DIR="$HOME/.nightshift"
 DAEMON_BIN="$NIGHTSHIFT_DIR/nightshift-daemon"
 
+source /etc/profile.d/languages_env || echo "skipping languages_env (not on sprite)"
+
 echo "--- installing opencode ---"
 bun install -g opencode-ai@1.2.1
 
@@ -28,8 +30,7 @@ cat > "$NIGHTSHIFT_DIR/config.json" <<EOF
 EOF
 
 echo "--- starting daemon service ---"
-curl -sf -X PUT http://localhost/v1/services/nightshift \
-  -H 'Content-Type: application/json' \
-  -d "{\"cmd\":\"$DAEMON_BIN\",\"args\":[\"daemon\"]}"
+sprite-env curl -X PUT /v1/services/nightshift \
+  -d "{\"cmd\":\"$DAEMON_BIN\",\"args\":[\"daemon\"],\"env\":{\"BUN_INSTALL\":\"${BUN_INSTALL:-}\"}}"
 
 echo "--- done ---"

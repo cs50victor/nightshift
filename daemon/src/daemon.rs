@@ -58,6 +58,14 @@ pub async fn run() -> Result<()> {
     std::fs::create_dir_all(&data_dir)?;
     std::fs::write(data_dir.join("opencode.json"), OPENCODE_CONFIG)?;
 
+    if let Ok(bun_install) = std::env::var("BUN_INSTALL") {
+        let bun_bin = format!("{bun_install}/bin");
+        let path = std::env::var("PATH").unwrap_or_default();
+        if !path.contains(&bun_bin) {
+            std::env::set_var("PATH", format!("{bun_bin}:{path}"));
+        }
+    }
+
     // NOTE(victor): No supervisor. If opencode dies, the daemon exits.
     // launchd/systemd restarts the daemon, which restarts opencode.
     let mut child = tokio::process::Command::new("opencode")

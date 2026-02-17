@@ -21,9 +21,13 @@ function getClient(): SpritesClient {
 }
 
 function getServerUrl(): string {
-  const url = process.env.SERVER_URL;
-  if (!url) throw new Error("SERVER_URL not set");
-  return url;
+  if (process.env.NODE_ENV === "production") {
+    const url = process.env.SERVER_URL;
+    if (!url) throw new Error("SERVER_URL not set");
+    return url;
+  }
+  // NOTE(victor): sprites can't reach localhost -- use deployed server in dev
+  return "https://nightshift-server.fly.dev";
 }
 
 export async function createSprite(displayName?: string): Promise<{ name: string; nodeId: string }> {
