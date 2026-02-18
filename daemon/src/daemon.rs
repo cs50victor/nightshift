@@ -1,8 +1,16 @@
 use anyhow::Result;
+#[cfg(unix)]
+use std::os::unix::process::CommandExt;
 use std::time::Duration;
 use tokio::signal;
 
 use crate::update;
+use std::sync::atomic::{AtomicBool, Ordering};
+
+/// Set to true by the watchdog before it kills the opencode child and execve-restarts.
+/// Prevents the child.wait() select arm from calling exit(1) during a planned restart.
+#[cfg(unix)]
+static RESTARTING: AtomicBool = AtomicBool::new(false);
 
 const UPDATE_INTERVAL: Duration = Duration::from_secs(3600);
 const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(60);
@@ -53,6 +61,73 @@ async fn wait_for_opencode(port: u16, timeout: Duration) -> Result<()> {
     }
 }
 
+/// Returns true if wall_elapsed exceeds mono_elapsed + threshold, indicating a thaw.
+/// Uses saturating arithmetic: if wall_elapsed < mono_elapsed (clock went backwards), returns false.
+fn thaw_detected(wall_elapsed: Duration, mono_elapsed: Duration, threshold: Duration) -> bool {
+    wall_elapsed > mono_elapsed.saturating_add(threshold)
+}
+
+#[cfg(unix)]
+#[cfg(any(debug_assertions, test))]
+fn check_fd_cloexec() {
+    #[cfg(target_os = "linux")]
+    {
+        if let Ok(entries) = std::fs::read_dir("/proc/self/fd") {
+            for entry in entries.flatten() {
+                if let Ok(name) = entry.file_name().into_string() {
+                    if let Ok(fd) = name.parse::<i32>() {
+                        if fd <= 2 { continue; }
+                        let flags = unsafe { libc::fcntl(fd, libc::F_GETFD) };
+                        if flags >= 0 && (flags & libc::FD_CLOEXEC) == 0 {
+                            tracing::warn!("fd {} missing FD_CLOEXEC -- will leak across exec", fd);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[cfg(unix)]
+fn restart_self_for_thaw(child_pid: Option<i32>) -> ! {
+    RESTARTING.store(true, Ordering::SeqCst);
+    if let Some(pid) = child_pid {
+        unsafe { libc::kill(pid, libc::SIGTERM); }
+        std::thread::sleep(Duration::from_millis(300));
+        let still_alive = unsafe { libc::kill(pid, 0) } == 0;
+        if still_alive {
+            unsafe { libc::kill(pid, libc::SIGKILL); }
+        }
+    }
+
+    #[cfg(any(debug_assertions, test))]
+    check_fd_cloexec();
+
+    // NOTE(victor): execve replaces process image. All FD_CLOEXEC fds close automatically.
+    // Same PID, so service manager stays happy.
+    // NIGHTSHIFT_TEST_EXEC_TARGET lets tests inject a fake binary.
+    let exe = if let Ok(target) = std::env::var("NIGHTSHIFT_TEST_EXEC_TARGET") {
+        std::path::PathBuf::from(target)
+    } else {
+        match std::env::current_exe() {
+            Ok(p) => p,
+            Err(e) => {
+                eprintln!("nightshift: current_exe() failed: {e}");
+                unsafe { libc::_exit(1) }
+            }
+        }
+    };
+
+    let args: Vec<std::ffi::OsString> = std::env::args_os().skip(1).collect();
+    let err = std::process::Command::new(&exe)
+        .args(&args)
+        .env_remove("NIGHTSHIFT_TEST_FORCE_THAW")  // prevent infinite restart loop in tests
+        .env("NIGHTSHIFT_TEST_IS_RESTART", "1")
+        .exec();
+    eprintln!("nightshift: execve failed: {err}");
+    unsafe { libc::_exit(1) }
+}
+
 /// Spawn the OS-thread watchdog that detects sprite thaw via SystemTime vs Instant divergence.
 ///
 /// After a sprite hibernates and thaws, CLOCK_MONOTONIC (Instant) does not advance during
@@ -61,15 +136,26 @@ async fn wait_for_opencode(port: u16, timeout: Duration) -> Result<()> {
 /// corruption -- the same stale epoll that breaks listener.accept() would also break a tokio
 /// interval task.
 ///
-/// On detection: sends SIGTERM to the opencode child, then calls exit(0). The service manager
-/// restarts the daemon, giving fresh FDs and a fresh tokio runtime.
+/// On detection: sends SIGTERM to the opencode child, then calls execve to replace the process
+/// image. Same PID, fresh FDs and a fresh tokio runtime.
 #[cfg(unix)]
 fn spawn_watchdog(child_pid: Option<i32>) {
     std::thread::spawn(move || {
         let mut last_wall = std::time::SystemTime::now();
         let mut last_mono = std::time::Instant::now();
         loop {
-            std::thread::sleep(WATCHDOG_SLEEP);
+            let sleep_dur = if std::env::var("NIGHTSHIFT_TEST_FORCE_THAW").is_ok() {
+                Duration::from_millis(1000)
+            } else {
+                WATCHDOG_SLEEP
+            };
+            std::thread::sleep(sleep_dur);
+
+            if std::env::var("NIGHTSHIFT_TEST_FORCE_THAW").is_ok() {
+                tracing::info!("NIGHTSHIFT_TEST_FORCE_THAW: triggering synthetic thaw");
+                restart_self_for_thaw(child_pid);
+            }
+
             let now_wall = std::time::SystemTime::now();
             let now_mono = std::time::Instant::now();
             let wall_elapsed = now_wall
@@ -78,18 +164,13 @@ fn spawn_watchdog(child_pid: Option<i32>) {
             let mono_elapsed = now_mono.duration_since(last_mono);
             last_wall = now_wall;
             last_mono = now_mono;
-            if wall_elapsed > mono_elapsed + WATCHDOG_THRESHOLD {
+            if thaw_detected(wall_elapsed, mono_elapsed, WATCHDOG_THRESHOLD) {
                 tracing::info!(
                     "thaw detected (wall={:.1}s mono={:.1}s), restarting",
                     wall_elapsed.as_secs_f64(),
                     mono_elapsed.as_secs_f64()
                 );
-                if let Some(pid) = child_pid {
-                    unsafe {
-                        libc::kill(pid, libc::SIGTERM);
-                    }
-                }
-                std::process::exit(0);
+                restart_self_for_thaw(child_pid);
             }
         }
     });
@@ -114,6 +195,12 @@ pub async fn run() -> Result<()> {
         }
     } else {
         tracing::info!("self-update disabled via NIGHTSHIFT_NO_UPDATE");
+    }
+
+    if std::env::var("NIGHTSHIFT_TEST_IS_RESTART").is_ok() {
+        tracing::info!("NIGHTSHIFT_TEST_IS_RESTART set: second generation exiting cleanly");
+        std::thread::sleep(Duration::from_millis(200));
+        std::process::exit(0);
     }
 
     if update::is_enabled() {
@@ -219,6 +306,12 @@ pub async fn run() -> Result<()> {
 
     tokio::select! {
         status = child.wait() => {
+            #[cfg(unix)]
+            if RESTARTING.load(Ordering::SeqCst) {
+                // Watchdog is about to execve-replace us. Block here -- execve will take over.
+                tracing::info!("opencode exited during planned restart, waiting for execve");
+                loop { std::thread::sleep(std::time::Duration::from_secs(60)); }
+            }
             tracing::error!("opencode exited: {:?}, daemon will exit", status);
             std::process::exit(1);
         }
@@ -239,4 +332,56 @@ pub async fn run() -> Result<()> {
         crate::nodes::deregister_remote(url, &node_id).await.ok();
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::Duration;
+
+    #[test]
+    fn thaw_detected_true_when_wall_exceeds_mono_plus_threshold() {
+        assert!(thaw_detected(
+            Duration::from_secs(15),
+            Duration::from_secs(5),
+            Duration::from_secs(5),
+        ));
+    }
+
+    #[test]
+    fn thaw_detected_false_at_exact_threshold_boundary() {
+        assert!(!thaw_detected(
+            Duration::from_secs(10),
+            Duration::from_secs(5),
+            Duration::from_secs(5),
+        ));
+    }
+
+    #[test]
+    fn thaw_detected_false_when_wall_below_threshold() {
+        assert!(!thaw_detected(
+            Duration::from_secs(6),
+            Duration::from_secs(5),
+            Duration::from_secs(5),
+        ));
+    }
+
+    #[test]
+    fn thaw_detected_false_when_wall_elapsed_zero() {
+        assert!(!thaw_detected(
+            Duration::ZERO,
+            Duration::from_secs(1),
+            Duration::from_secs(5),
+        ));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn kill_stale_opencode_removes_pidfile_with_dead_pid() {
+        let dir = tempfile::tempdir().unwrap();
+        let pid_path = dir.path().join("opencode.pid");
+        std::fs::write(&pid_path, i32::MAX.to_string()).unwrap();
+        kill_stale_opencode(&pid_path);
+        assert!(!pid_path.exists(), "pid file must be removed even if pid is dead/invalid");
+    }
 }

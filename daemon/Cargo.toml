@@ -2,6 +2,11 @@
 name = "nightshift-daemon"
 version = "0.0.8"
 edition = "2021"
+default-run = "nightshift-daemon"
+
+[[bin]]
+name = "fake_opencode"
+path = "tests/bin/fake_opencode.rs"
 
 [dependencies]
 clap = { version = "4", features = ["derive"] }
@@ -25,6 +30,12 @@ libc = "0.2"
 
 [dev-dependencies]
 tempfile = "3"
+assert_cmd = "2"
+predicates = "3"
+serial_test = "3"
+
+[target.'cfg(unix)'.dev-dependencies]
+nix = { version = "0.29", features = ["process", "signal", "fs"] }
 
 [profile.release]
 strip = true
