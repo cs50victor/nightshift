@@ -20,20 +20,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     async function init() {
       try {
-        const existing = getNodeCookie();
-        if (!existing) {
-          const res = await fetch("/api/nodes");
-          const data = await res.json();
-          const nodes: Node[] = data.nodes || [];
-          if (nodes.length === 0) {
-            setError("No nodes available");
-            setLoading(false);
-            return;
-          }
+        const res = await fetch("/api/nodes");
+        const data = await res.json();
+        const nodes: Node[] = data.nodes || [];
+        if (nodes.length === 0) {
+          setError("No nodes available");
+          setLoading(false);
+          return;
+        }
+
+        const cached = getNodeCookie();
+        const cachedStillAlive = cached && nodes.some((n) => n.url === cached);
+        if (!cachedStillAlive) {
           setActiveNode(nodes[0].url, nodes[0].id);
-        } else {
-          useNodeStore.getState().activeNodeUrl !== existing &&
-            useNodeStore.setState({ activeNodeUrl: existing });
         }
 
         const health = await fetch("/api/opencode/global/health");
