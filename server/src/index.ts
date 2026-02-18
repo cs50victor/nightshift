@@ -28,11 +28,17 @@ async function handleProxy(req: Request, nodeId: string, path: string, search: s
     duplex: "half",
   });
 
-  // NOTE(victor): pass body stream through directly -- this preserves SSE (text/event-stream)
+  // NOTE(victor): Bun's fetch() auto-decompresses the body, but the original headers
+  // still claim content-encoding (e.g. zstd). Strip encoding headers so downstream
+  // consumers don't try to decompress an already-decompressed body.
+  const respHeaders = new Headers(upstream.headers);
+  respHeaders.delete("content-encoding");
+  respHeaders.delete("content-length");
+
   return new Response(upstream.body, {
     status: upstream.status,
     statusText: upstream.statusText,
-    headers: upstream.headers,
+    headers: respHeaders,
   });
 }
 

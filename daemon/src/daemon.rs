@@ -165,10 +165,8 @@ pub async fn run() -> Result<()> {
     // The service manager (launchd/systemd/sprites supervisor) restarts the daemon,
     // which spawns a fresh opencode. This gives us fresh FDs and a clean epoll state.
     let mut child = tokio::process::Command::new("opencode")
-        .args(["serve", "--port", &OPENCODE_PORT.to_string()])
+        .args(["serve", "--log-level", "DEBUG", "--print-logs", "--port", &OPENCODE_PORT.to_string()])
         .current_dir(&data_dir)
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
         .spawn()?;
 
     let child_pid = child.id().map(|p| p as i32);
