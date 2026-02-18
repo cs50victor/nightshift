@@ -14,14 +14,10 @@ DAEMON_BIN="$NIGHTSHIFT_DIR/nightshift-daemon"
 hostname "$SPRITE_NAME"
 
 echo "--- installing opencode ---"
-bun install -g opencode-ai@1.2.1
-
-# NOTE(victor): bun install -g puts binaries in a dir not on PATH.
-# Ask bun where its global bin is and derive BUN_INSTALL from that.
-GLOBAL_BIN="$(bun pm bin -g)"
-BUN_INSTALL="$(dirname "$GLOBAL_BIN")"
-export BUN_INSTALL
-echo "BUN_INSTALL=$BUN_INSTALL (global bin: $GLOBAL_BIN)"
+curl -fsSL https://opencode.ai/install | bash
+OPENCODE_BIN="$HOME/.opencode/bin"
+export PATH="$OPENCODE_BIN:$PATH"
+echo "opencode installed at: $(which opencode)"
 
 echo "--- downloading daemon ---"
 mkdir -p "$NIGHTSHIFT_DIR"
@@ -43,7 +39,7 @@ echo "--- starting daemon service ---"
 # NOTE(victor): service env object isn't reliably applied (confirmed by browserd project).
 # Inline PATH via bash -c so the daemon can find opencode.
 # NOTE(victor): http_port tells the sprites platform to route the sprite's public URL to this port.
-SERVICE_JSON="{\"cmd\":\"bash\",\"args\":[\"-c\",\"PATH=$GLOBAL_BIN:\$PATH exec $DAEMON_BIN daemon\"],\"http_port\":$NIGHTSHIFT_PROXY_PORT}"
+SERVICE_JSON="{\"cmd\":\"bash\",\"args\":[\"-c\",\"PATH=$OPENCODE_BIN:\$PATH exec $DAEMON_BIN daemon\"],\"http_port\":$NIGHTSHIFT_PROXY_PORT}"
 sprite-env curl -X PUT /v1/services/nightshift -d "$SERVICE_JSON"
 
 echo "--- done ---"

@@ -7,6 +7,7 @@ use crate::update;
 const UPDATE_INTERVAL: Duration = Duration::from_secs(3600);
 const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(60);
 const OPENCODE_CONFIG: &str = include_str!("../opencode.json");
+const PLANNER_PROMPT: &str = include_str!("../planner-system-prompt.txt");
 const OPENCODE_PORT: u16 = 19276;
 const PROXY_PORT: u16 = OPENCODE_PORT + 1;
 const WATCHDOG_SLEEP: Duration = Duration::from_secs(5);
@@ -141,9 +142,13 @@ pub async fn run() -> Result<()> {
     let url_override = cfg.as_ref().map(|c| c.public_url.as_str());
 
     let home = std::env::var("HOME").unwrap_or_else(|_| ".".into());
-    let data_dir = std::path::PathBuf::from(home).join(".nightshift");
+    let data_dir = std::path::PathBuf::from(&home).join(".nightshift");
     std::fs::create_dir_all(&data_dir)?;
     std::fs::write(data_dir.join("opencode.json"), OPENCODE_CONFIG)?;
+
+    let prompts_dir = std::path::PathBuf::from(&home).join(".agents/prompts");
+    std::fs::create_dir_all(&prompts_dir)?;
+    std::fs::write(prompts_dir.join("planner-system-prompt.txt"), PLANNER_PROMPT)?;
 
     if let Ok(bun_install) = std::env::var("BUN_INSTALL") {
         let bun_bin = format!("{bun_install}/bin");

@@ -3,7 +3,7 @@
   "mcp": {
     "claude-teams": {
       "type": "local",
-      "command": ["uvx", "--from", "/Users/vic8or/dev/claude-code-teams-mcp", "claude-teams"],
+      "command": ["uvx", "--from", "git+https://github.com/cs50victor/claude-code-teams-mcp", "claude-teams"],
       "enabled": true,
       "environment": {
         "USE_TMUX_WINDOWS":"1",
