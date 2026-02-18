@@ -30,12 +30,12 @@ pub fn load() -> Option<Config> {
     #[cfg(debug_assertions)]
     {
         tracing::info!("no config file found, using dev defaults");
-        return Some(Config {
+        Some(Config {
             version: 1,
             server_url: "http://localhost:4001".into(),
             public_url: "http://localhost:19277".into(),
             proxy_port: 19277,
-        });
+        })
     }
 
     #[cfg(not(debug_assertions))]
