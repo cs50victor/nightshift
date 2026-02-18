@@ -14,6 +14,7 @@ const WATCHDOG_THRESHOLD: Duration = Duration::from_secs(5);
 const OPENCODE_PID_FILE: &str = "opencode.pid";
 const READINESS_TIMEOUT: Duration = Duration::from_secs(8);
 
+#[cfg(unix)]
 fn kill_stale_opencode(pid_path: &std::path::Path) {
     if let Ok(contents) = std::fs::read_to_string(pid_path) {
         if let Ok(pid) = contents.trim().parse::<i32>() {
@@ -28,6 +29,11 @@ fn kill_stale_opencode(pid_path: &std::path::Path) {
         }
         let _ = std::fs::remove_file(pid_path);
     }
+}
+
+#[cfg(not(unix))]
+fn kill_stale_opencode(pid_path: &std::path::Path) {
+    let _ = std::fs::remove_file(pid_path);
 }
 
 async fn wait_for_opencode(port: u16, timeout: Duration) -> Result<()> {
@@ -56,6 +62,7 @@ async fn wait_for_opencode(port: u16, timeout: Duration) -> Result<()> {
 ///
 /// On detection: sends SIGTERM to the opencode child, then calls exit(0). The service manager
 /// restarts the daemon, giving fresh FDs and a fresh tokio runtime.
+#[cfg(unix)]
 fn spawn_watchdog(child_pid: Option<i32>) {
     std::thread::spawn(move || {
         let mut last_wall = std::time::SystemTime::now();
@@ -86,6 +93,9 @@ fn spawn_watchdog(child_pid: Option<i32>) {
         }
     });
 }
+
+#[cfg(not(unix))]
+fn spawn_watchdog(_child_pid: Option<i32>) {}
 
 pub async fn run() -> Result<()> {
     tracing::info!("starting nightshift daemon v{}", env!("CARGO_PKG_VERSION"));
