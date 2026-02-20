@@ -3,7 +3,7 @@
   "mcp": {
     "claude-teams": {
       "type": "local",
-      "command": ["uvx", "--from", "/Users/vic8or/dev/claude-code-teams-mcp", "claude-teams"],
+      "command": ["uvx", "--from", "git+https://github.com/cs50victor/claude-code-teams-mcp", "claude-teams"],
       "enabled": true,
       "environment": {
         "USE_TMUX_WINDOWS":"1",
@@ -49,8 +49,7 @@
     },
     "anthropic": {
       "whitelist": [
-        "claude-haiku-4-5-20251001",
-        "claude-opus-4-5-20251101",
+        "claude-sonnet-4-6",
         "claude-opus-4-6"
       ]
     }
@@ -59,7 +58,7 @@
     "team-manager": {
       "description": "Project manager that orchestrates work across parallel workers",
       "mode": "primary",
-      "model": "anthropic/claude-opus-4-6",
+      "model": "anthropic/claude-sonnet-4-6",
       "prompt": "{file:~/.agents/prompts/planner-system-prompt.txt}",
       "temperature": 0.1,
       "permission": {

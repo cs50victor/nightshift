@@ -69,6 +69,28 @@ test-daemon:
 test-server:
     cd server && bun test
 
+[doc('Test sprite setup script in Docker')]
+[group('test')]
+test-sprite-setup:
+    docker run --rm \
+      -v "$(pwd)/server/src/scripts/setup-sprite.sh:/setup.sh:ro" \
+      -e DAEMON_RELEASE_URL="https://github.com/cs50victor/nightshift/releases/latest/download/nightshift-daemon-x86_64-unknown-linux-gnu" \
+      -e NIGHTSHIFT_SERVER_URL="http://localhost:4001" \
+      -e NIGHTSHIFT_PUBLIC_URL="http://localhost:8080" \
+      -e NIGHTSHIFT_PROXY_PORT="8080" \
+      oven/bun:latest bash -c 'apt-get update -qq && apt-get install -y -qq curl > /dev/null 2>&1 && bash /setup.sh'
+
+[doc('Test DigitalOcean setup script in Docker')]
+[group('test')]
+test-digitalocean-setup:
+    docker run --rm \
+      -v "$(pwd)/server/src/scripts/setup-digitalocean.sh:/setup.sh:ro" \
+      -e NIGHTSHIFT_SERVER_URL="http://localhost:4001" \
+      -e NIGHTSHIFT_PUBLIC_IP="127.0.0.1" \
+      -e NIGHTSHIFT_HOSTNAME="test-droplet" \
+      -e DAEMON_RELEASE_URL="https://github.com/cs50victor/nightshift/releases/latest/download/nightshift-daemon-x86_64-unknown-linux-gnu" \
+      oven/bun:latest bash -c 'apt-get update -qq && apt-get install -y -qq curl > /dev/null 2>&1 && bash /setup.sh'
+
 # --- lint ---
 
 [doc('Run all linters + typecheck')]

@@ -1,7 +1,12 @@
 [package]
 name = "nightshift-daemon"
-version = "0.0.2"
+version = "0.0.9"
 edition = "2021"
+default-run = "nightshift-daemon"
+
+[[bin]]
+name = "fake_opencode"
+path = "tests/bin/fake_opencode.rs"
 
 [dependencies]
 clap = { version = "4", features = ["derive"] }
@@ -18,6 +23,19 @@ semver = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 time = { version = "0.3", features = ["formatting"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[dev-dependencies]
+tempfile = "3"
+assert_cmd = "2"
+predicates = "3"
+serial_test = "3"
+
+[target.'cfg(unix)'.dev-dependencies]
+nix = { version = "0.29", features = ["process", "signal", "fs"] }
 
 [profile.release]
 strip = true

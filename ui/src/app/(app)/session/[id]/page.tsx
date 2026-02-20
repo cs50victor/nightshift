@@ -236,7 +236,7 @@ export default function SessionPage() {
     if (currentSession?.title) {
       const formatted = currentSession.title.replace(
         /\d{4}-\d{2}-\d{2}T[\d:.]+Z$/,
-        (iso) => new Date(iso).toLocaleString(),
+        (iso: string) => new Date(iso).toLocaleString(),
       );
       setPageTitle(formatted);
     }
@@ -426,7 +426,7 @@ export default function SessionPage() {
   };
 
   return (
-    <div className="flex h-full flex-col -m-4">
+    <div className="flex h-full flex-col -my-4 mx-auto w-full max-w-5xl">
       <div
         className="flex-1 overflow-auto overflow-x-hidden"
         ref={chatContainerRef}

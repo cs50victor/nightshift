@@ -3,43 +3,36 @@
 import { useEffect, useState } from "react";
 import { AppSidebarNav } from "@/components/app-sidebar-nav";
 import { BreadcrumbProvider } from "@/contexts/breadcrumb-context";
+import type { Node } from "@/lib/types";
 import { useModelStore } from "@/stores/model-store";
-
-interface Node {
-  id: string;
-  name: string;
-  url: string;
-  startedAt: string;
-}
+import { useNodeStore } from "@/stores/node-store";
 
 function getNodeCookie(): string | null {
   const match = document.cookie.match(/nightshift-node-url=([^;]+)/);
   return match ? decodeURIComponent(match[1]) : null;
 }
 
-function setNodeCookie(url: string) {
-  // biome-ignore lint/suspicious/noDocumentCookie: Cookie Store API lacks broad support; middleware reads this cookie
-  document.cookie = `nightshift-node-url=${encodeURIComponent(url)}; path=/; max-age=31536000`;
-}
-
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const setActiveNode = useNodeStore((s) => s.setActiveNode);
 
   useEffect(() => {
     async function init() {
       try {
-        const existing = getNodeCookie();
-        if (!existing) {
-          const res = await fetch("/api/nodes");
-          const data = await res.json();
-          const nodes: Node[] = data.nodes || [];
-          if (nodes.length === 0) {
-            setError("No nodes available");
-            setLoading(false);
-            return;
-          }
-          setNodeCookie(nodes[0].url);
+        const res = await fetch("/api/nodes");
+        const data = await res.json();
+        const nodes: Node[] = data.nodes || [];
+        if (nodes.length === 0) {
+          setError("No nodes available");
+          setLoading(false);
+          return;
+        }
+
+        const cached = getNodeCookie();
+        const cachedStillAlive = cached && nodes.some((n) => n.url === cached);
+        if (!cachedStillAlive) {
+          setActiveNode(nodes[0].url, nodes[0].id);
         }
 
         const health = await fetch("/api/opencode/global/health");
@@ -67,7 +60,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       }
     }
     init();
-  }, []);
+  }, [setActiveNode]);
 
   if (loading) {
     return (
