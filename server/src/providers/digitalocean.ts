@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { nodeExists, removeNode } from "../redis";
-import type { VMProvider } from "./provider";
+import { getServerUrl, type VMProvider } from "./provider";
 
 const DO_API = "https://api.digitalocean.com/v2";
 
@@ -55,15 +55,6 @@ async function doRequest<T>(
   }
 
   return data as T;
-}
-
-function getServerUrl(): string {
-  if (process.env.NODE_ENV === "production") {
-    const url = process.env.SERVER_URL;
-    if (!url) throw new Error("SERVER_URL not set");
-    return url;
-  }
-  return "https://nightshift-server.fly.dev";
 }
 
 interface Droplet {

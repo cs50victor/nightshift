@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { SpritesClient } from "@fly/sprites";
 import { nodeExists, removeNode } from "../redis";
-import type { VMProvider } from "./provider";
+import { getServerUrl, type VMProvider } from "./provider";
 
 const POLL_INTERVAL_MS = 2000;
 const POLL_TIMEOUT_MS = 60000;
@@ -36,16 +36,6 @@ async function getSpriteUrl(name: string): Promise<string> {
   console.log("[sprite api]", JSON.stringify(data, null, 2));
   if (!data.url) throw new Error("sprite API returned no url");
   return data.url;
-}
-
-function getServerUrl(): string {
-  if (process.env.NODE_ENV === "production") {
-    const url = process.env.SERVER_URL;
-    if (!url) throw new Error("SERVER_URL not set");
-    return url;
-  }
-  // NOTE(victor): sprites can't reach localhost -- use deployed server in dev
-  return "https://nightshift-server.fly.dev";
 }
 
 async function pollNodeRegistration(spriteName: string): Promise<string> {
