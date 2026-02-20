@@ -276,23 +276,53 @@ pub async fn run() -> Result<()> {
     let server_url = cfg.as_ref().map(|c| c.server_url.clone());
 
     if let Some(ref url) = server_url {
-        if let Err(e) = crate::nodes::register_remote(url, &node).await {
-            tracing::warn!("remote registration failed: {e}");
-        }
+        let reg_url = url.clone();
+        let reg_node = node.clone();
+        tokio::spawn(async move {
+            let delays = [
+                Duration::from_secs(2),
+                Duration::from_secs(4),
+                Duration::from_secs(8),
+            ];
+            for (attempt, delay) in delays.iter().enumerate() {
+                match crate::nodes::register_remote(&reg_url, &reg_node).await {
+                    Ok(()) => return,
+                    Err(e) => {
+                        tracing::warn!(
+                            "remote registration attempt {}/{} failed: {e}",
+                            attempt + 1,
+                            delays.len()
+                        );
+                        if attempt < delays.len() - 1 {
+                            tokio::time::sleep(*delay).await;
+                        }
+                    }
+                }
+            }
+            tracing::warn!("remote registration failed after {} attempts", delays.len());
+        });
     }
 
     if let Some(ref url) = server_url {
         let heartbeat_url = url.clone();
         let heartbeat_id = node_id.clone();
+        let heartbeat_node = node.clone();
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(HEARTBEAT_INTERVAL);
             interval.tick().await;
             loop {
                 interval.tick().await;
-                if let Err(e) =
-                    crate::nodes::heartbeat_remote(&heartbeat_url, &heartbeat_id).await
-                {
-                    tracing::warn!("heartbeat failed: {e}");
+                match crate::nodes::heartbeat_remote(&heartbeat_url, &heartbeat_id).await {
+                    Ok(crate::nodes::HeartbeatResult::Ok) => {}
+                    Ok(crate::nodes::HeartbeatResult::NodeExpired) => {
+                        tracing::warn!("node expired from server, re-registering");
+                        if let Err(e) = crate::nodes::register_remote(&heartbeat_url, &heartbeat_node).await {
+                            tracing::warn!("re-registration failed: {e}");
+                        }
+                    }
+                    Err(e) => {
+                        tracing::warn!("heartbeat failed: {e}");
+                    }
                 }
             }
         });

@@ -7,5 +7,5 @@ export interface Node {
   os: string;
   arch: string;
   daemonVersion: string;
-  spriteName?: string;
+  machineName?: string;
 }

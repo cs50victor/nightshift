@@ -99,13 +99,22 @@ pub async fn deregister_remote(server_url: &str, id: &str) -> Result<()> {
     Ok(())
 }
 
-pub async fn heartbeat_remote(server_url: &str, id: &str) -> Result<()> {
-    reqwest::Client::new()
+pub enum HeartbeatResult {
+    Ok,
+    NodeExpired,
+}
+
+pub async fn heartbeat_remote(server_url: &str, id: &str) -> Result<HeartbeatResult> {
+    let resp = reqwest::Client::new()
         .put(format!("{server_url}/nodes/{id}/heartbeat"))
         .send()
-        .await?
-        .error_for_status()?;
-    Ok(())
+        .await?;
+
+    if resp.status() == reqwest::StatusCode::NOT_FOUND {
+        return Ok(HeartbeatResult::NodeExpired);
+    }
+    resp.error_for_status()?;
+    Ok(HeartbeatResult::Ok)
 }
 
 pub fn deregister(id: &str) {

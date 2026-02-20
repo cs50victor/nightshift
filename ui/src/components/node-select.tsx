@@ -12,7 +12,7 @@ import {
   MenuTrigger,
 } from "@/components/ui/menu";
 import { toast } from "@/components/ui/toast";
-import { useDeleteSprite, useNodes } from "@/hooks/use-opencode";
+import { useDeleteMachine, useNodes } from "@/hooks/use-opencode";
 import type { Node } from "@/lib/types";
 import { useNodeStore } from "@/stores/node-store";
 import { CreateNodeModal } from "./create-node-modal";
@@ -25,7 +25,7 @@ export function NodeSelect() {
   const { data, mutate } = useNodes();
   const activeNodeUrl = useNodeStore((s) => s.activeNodeUrl);
   const setActiveNode = useNodeStore((s) => s.setActiveNode);
-  const deleteSprite = useDeleteSprite();
+  const deleteMachine = useDeleteMachine();
   const [modalOpen, setModalOpen] = useState(false);
 
   const nodes: Node[] = data?.nodes ?? [];
@@ -37,9 +37,9 @@ export function NodeSelect() {
   };
 
   const handleDelete = async (node: Node) => {
-    const spriteName = node.spriteName ?? node.name;
+    const machineName = node.machineName ?? node.name;
     try {
-      await deleteSprite(spriteName);
+      await deleteMachine(machineName);
       toast.success(`Deleted ${node.name}`);
       if (node.url === activeNodeUrl) {
         const remaining = nodes.filter((n) => n.url !== node.url);

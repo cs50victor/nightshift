@@ -1,5 +1,7 @@
 import { addNode, getNode, listNodes, removeNode, refreshNodeTTL, type Node } from "./redis";
-import { createSprite, destroySprite, listSprites } from "./sprites";
+import { getProvider } from "./providers";
+
+const provider = getProvider();
 
 async function handleProxy(req: Request, nodeId: string, path: string, search: string): Promise<Response> {
   const node = await getNode(nodeId);
@@ -12,13 +14,7 @@ async function handleProxy(req: Request, nodeId: string, path: string, search: s
   const headers = new Headers(req.headers);
   headers.delete("host");
 
-  // NOTE(victor): sprite URLs are private -- inject auth so the UI doesn't need the token
-  if (target.hostname.endsWith(".sprites.app") || target.hostname.endsWith(".sprites.dev")) {
-    const token = process.env.SPRITES_TOKEN;
-    if (token) {
-      headers.set("Authorization", `Bearer ${token}`);
-    }
-  }
+  provider.injectProxyAuth(target, headers);
 
   const upstream = await fetch(target.toString(), {
     method: req.method,
@@ -79,21 +75,21 @@ const server = Bun.serve({
       },
     },
 
-    "/sprites": {
+    "/machines": {
       GET: async () => {
-        const sprites = await listSprites();
-        return Response.json({ sprites });
+        const machines = await provider.list();
+        return Response.json({ machines });
       },
       POST: async (req) => {
         const body = await req.json().catch(() => ({}));
-        const result = await createSprite(body.name);
+        const result = await provider.create(body.name);
         return Response.json(result, { status: 201 });
       },
     },
 
-    "/sprites/:name": {
+    "/machines/:name": {
       DELETE: async (req) => {
-        await destroySprite(req.params.name);
+        await provider.destroy(req.params.name);
         return Response.json({ ok: true });
       },
     },

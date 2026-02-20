@@ -12,10 +12,13 @@ mock.module("../src/redis", () => ({
   refreshNodeTTL: async (id: string) => nodes.has(id),
 }));
 
-mock.module("../src/sprites", () => ({
-  createSprite: async () => ({ name: "nightshift-abc12345", nodeId: "nightshift-abc12345-8080" }),
-  destroySprite: async (_name: string) => {},
-  listSprites: async () => [{ name: "nightshift-abc12345", status: "running" }],
+mock.module("../src/providers", () => ({
+  getProvider: () => ({
+    create: async () => ({ name: "nightshift-abc12345", nodeId: "nightshift-abc12345-8080" }),
+    destroy: async (_name: string) => {},
+    list: async () => [{ name: "nightshift-abc12345", status: "running" }],
+    injectProxyAuth: () => {},
+  }),
 }));
 
 process.env.PORT = "0";
@@ -75,20 +78,20 @@ describe("node lifecycle", () => {
   });
 });
 
-describe("sprite routes", () => {
-  test("should create and list sprites", async () => {
-    const createRes = await fetch(`${base}/sprites`, { method: "POST" });
+describe("machine routes", () => {
+  test("should create and list machines", async () => {
+    const createRes = await fetch(`${base}/machines`, { method: "POST" });
     expect(createRes.status).toBe(201);
     const created = await createRes.json();
     expect(created.name).toStartWith("nightshift-");
 
-    const listRes = await fetch(`${base}/sprites`);
-    const { sprites } = await listRes.json();
-    expect(sprites.length).toBeGreaterThan(0);
+    const listRes = await fetch(`${base}/machines`);
+    const { machines } = await listRes.json();
+    expect(machines.length).toBeGreaterThan(0);
   });
 
-  test("should destroy a sprite", async () => {
-    const res = await fetch(`${base}/sprites/nightshift-abc12345`, { method: "DELETE" });
+  test("should destroy a machine", async () => {
+    const res = await fetch(`${base}/machines/nightshift-abc12345`, { method: "DELETE" });
     expect(res.status).toBe(200);
   });
 });

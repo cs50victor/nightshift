@@ -6,7 +6,7 @@ const SERVER_URL =
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));
-    const res = await fetch(`${SERVER_URL}/sprites`, {
+    const res = await fetch(`${SERVER_URL}/machines`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -25,10 +25,13 @@ export async function DELETE(
   const { path } = await params;
   const name = path?.[0];
   if (!name) {
-    return NextResponse.json({ error: "missing sprite name" }, { status: 400 });
+    return NextResponse.json(
+      { error: "missing machine name" },
+      { status: 400 },
+    );
   }
   try {
-    const res = await fetch(`${SERVER_URL}/sprites/${name}`, {
+    const res = await fetch(`${SERVER_URL}/machines/${name}`, {
       method: "DELETE",
     });
     const data = await res.json();

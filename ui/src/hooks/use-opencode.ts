@@ -1,6 +1,6 @@
 "use client";
-import { useNodeStore } from "@/stores/node-store";
 import useSWR from "swr";
+import { useNodeStore } from "@/stores/node-store";
 
 const fetcher = async (url: string) => {
   const res = await fetch(url);
@@ -62,7 +62,9 @@ export function useCreateSession() {
   return async (title?: string) => {
     const { activeNodeUrl } = useNodeStore.getState();
     if (!activeNodeUrl) {
-      throw new Error("No node selected. Select a node before creating a session.");
+      throw new Error(
+        "No node selected. Select a node before creating a session.",
+      );
     }
 
     const res = await fetch("/api/opencode/session", {
@@ -100,27 +102,27 @@ export function useGitDiff(path?: string | null) {
   );
 }
 
-export function useCreateSprite() {
+export function useCreateMachine() {
   return async (name?: string) => {
-    const res = await fetch("/api/sprites", {
+    const res = await fetch("/api/machines", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name }),
     });
     if (!res.ok) {
       const data = await res.json().catch(() => null);
-      throw new Error(data?.error || `Sprite creation failed: ${res.status}`);
+      throw new Error(data?.error || `Machine creation failed: ${res.status}`);
     }
     return res.json() as Promise<{ name: string; nodeId: string }>;
   };
 }
 
-export function useDeleteSprite() {
+export function useDeleteMachine() {
   return async (name: string) => {
-    const res = await fetch(`/api/sprites/${name}`, { method: "DELETE" });
+    const res = await fetch(`/api/machines/${name}`, { method: "DELETE" });
     if (!res.ok) {
       const data = await res.json().catch(() => null);
-      throw new Error(data?.error || `Sprite deletion failed: ${res.status}`);
+      throw new Error(data?.error || `Machine deletion failed: ${res.status}`);
     }
     return res.json();
   };

@@ -10,7 +10,7 @@ import {
   SheetFooter,
   SheetHeader,
 } from "@/components/ui/sheet";
-import { useCreateSprite, useNodes } from "@/hooks/use-opencode";
+import { useCreateMachine, useNodes } from "@/hooks/use-opencode";
 import type { Node } from "@/lib/types";
 import { useNodeStore } from "@/stores/node-store";
 
@@ -26,7 +26,7 @@ export function CreateNodeModal({
   const [name, setName] = useState("");
   const [status, setStatus] = useState<"idle" | "creating" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
-  const createSprite = useCreateSprite();
+  const createMachine = useCreateMachine();
   const { mutate: mutateNodes } = useNodes();
   const setActiveNode = useNodeStore((s) => s.setActiveNode);
 
@@ -34,7 +34,7 @@ export function CreateNodeModal({
     setStatus("creating");
     setError(null);
     try {
-      const { nodeId } = await createSprite(name.trim() || undefined);
+      const { nodeId } = await createMachine(name.trim() || undefined);
       const res = await fetch("/api/nodes");
       const data = await res.json();
       const node = (data.nodes as Node[])?.find((n) => n.id === nodeId);
@@ -70,7 +70,7 @@ export function CreateNodeModal({
       >
         <SheetHeader
           title="New Remote Node"
-          description="Provision a remote sprite with opencode and nightshift daemon."
+          description="Provision a remote node with opencode and nightshift daemon."
         />
         <SheetBody>
           {status === "idle" && (
@@ -90,7 +90,7 @@ export function CreateNodeModal({
           {status === "creating" && (
             <div className="flex flex-col items-center gap-3 py-8">
               <Loader className="size-6" />
-              <p className="text-sm text-muted-fg">Provisioning sprite...</p>
+              <p className="text-sm text-muted-fg">Provisioning node...</p>
             </div>
           )}
           {status === "error" && (
