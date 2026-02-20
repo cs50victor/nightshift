@@ -26,10 +26,16 @@ export function middleware(req: NextRequest) {
 
   const serverUrl = process.env.NIGHTSHIFT_SERVER_URL;
   if (!serverUrl) {
-    return NextResponse.json({ error: "NIGHTSHIFT_SERVER_URL not configured" }, { status: 500 });
+    return NextResponse.json(
+      { error: "NIGHTSHIFT_SERVER_URL not configured" },
+      { status: 500 },
+    );
   }
 
-  const target = new URL(`/proxy/${encodeURIComponent(nodeId)}${path}${search}`, serverUrl);
+  const target = new URL(
+    `/proxy/${encodeURIComponent(nodeId)}${path}${search}`,
+    serverUrl,
+  );
   return NextResponse.rewrite(target);
 }
 

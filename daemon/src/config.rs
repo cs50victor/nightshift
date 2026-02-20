@@ -86,5 +86,4 @@ mod tests {
         fs::write(&path, r#"{"serverUrl":"https://example.com"}"#).unwrap();
         assert!(load_from(&path).is_none());
     }
-
 }

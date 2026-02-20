@@ -21,12 +21,7 @@ mod tests {
         kill_stale_port_holders(19277);
         let home = TestHome::new();
 
-        let mut daemon = spawn_daemon(
-            &home,
-            &[
-                ("NIGHTSHIFT_TEST_FORCE_THAW", "1"),
-            ],
-        );
+        let mut daemon = spawn_daemon(&home, &[("NIGHTSHIFT_TEST_FORCE_THAW", "1")]);
 
         assert!(
             wait_for_port(19277, Duration::from_secs(15)),
@@ -49,12 +44,7 @@ mod tests {
         kill_stale_port_holders(19277);
         let home = TestHome::new();
 
-        let mut daemon = spawn_daemon(
-            &home,
-            &[
-                ("NIGHTSHIFT_TEST_FORCE_THAW", "1"),
-            ],
-        );
+        let mut daemon = spawn_daemon(&home, &[("NIGHTSHIFT_TEST_FORCE_THAW", "1")]);
 
         assert!(
             wait_for_port(19277, Duration::from_secs(15)),

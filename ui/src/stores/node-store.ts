@@ -17,6 +17,7 @@ export const useNodeStore = create<NodeState>()(
         set({ activeNodeUrl: url, activeNodeId: id });
         // biome-ignore lint/suspicious/noDocumentCookie: Cookie Store API lacks broad support; middleware reads these cookies
         document.cookie = `nightshift-node-url=${encodeURIComponent(url)}; path=/; max-age=31536000`;
+        // biome-ignore lint/suspicious/noDocumentCookie: Cookie Store API lacks broad support; middleware reads these cookies
         document.cookie = `nightshift-node-id=${encodeURIComponent(id)}; path=/; max-age=31536000`;
       },
     }),

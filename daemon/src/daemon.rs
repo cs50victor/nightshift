@@ -76,7 +76,9 @@ fn check_fd_cloexec() {
             for entry in entries.flatten() {
                 if let Ok(name) = entry.file_name().into_string() {
                     if let Ok(fd) = name.parse::<i32>() {
-                        if fd <= 2 { continue; }
+                        if fd <= 2 {
+                            continue;
+                        }
                         let flags = unsafe { libc::fcntl(fd, libc::F_GETFD) };
                         if flags >= 0 && (flags & libc::FD_CLOEXEC) == 0 {
                             tracing::warn!("fd {} missing FD_CLOEXEC -- will leak across exec", fd);
@@ -92,11 +94,15 @@ fn check_fd_cloexec() {
 fn restart_self_for_thaw(child_pid: Option<i32>) -> ! {
     RESTARTING.store(true, Ordering::SeqCst);
     if let Some(pid) = child_pid {
-        unsafe { libc::kill(pid, libc::SIGTERM); }
+        unsafe {
+            libc::kill(pid, libc::SIGTERM);
+        }
         std::thread::sleep(Duration::from_millis(300));
         let still_alive = unsafe { libc::kill(pid, 0) } == 0;
         if still_alive {
-            unsafe { libc::kill(pid, libc::SIGKILL); }
+            unsafe {
+                libc::kill(pid, libc::SIGKILL);
+            }
         }
     }
 
@@ -121,7 +127,7 @@ fn restart_self_for_thaw(child_pid: Option<i32>) -> ! {
     let args: Vec<std::ffi::OsString> = std::env::args_os().skip(1).collect();
     let err = std::process::Command::new(&exe)
         .args(&args)
-        .env_remove("NIGHTSHIFT_TEST_FORCE_THAW")  // prevent infinite restart loop in tests
+        .env_remove("NIGHTSHIFT_TEST_FORCE_THAW") // prevent infinite restart loop in tests
         .env("NIGHTSHIFT_TEST_IS_RESTART", "1")
         .exec();
     eprintln!("nightshift: execve failed: {err}");
@@ -158,9 +164,7 @@ fn spawn_watchdog(child_pid: Option<i32>) {
 
             let now_wall = std::time::SystemTime::now();
             let now_mono = std::time::Instant::now();
-            let wall_elapsed = now_wall
-                .duration_since(last_wall)
-                .unwrap_or(Duration::ZERO);
+            let wall_elapsed = now_wall.duration_since(last_wall).unwrap_or(Duration::ZERO);
             let mono_elapsed = now_mono.duration_since(last_mono);
             last_wall = now_wall;
             last_mono = now_mono;
@@ -235,7 +239,10 @@ pub async fn run() -> Result<()> {
 
     let prompts_dir = std::path::PathBuf::from(&home).join(".agents/prompts");
     std::fs::create_dir_all(&prompts_dir)?;
-    std::fs::write(prompts_dir.join("planner-system-prompt.txt"), PLANNER_PROMPT)?;
+    std::fs::write(
+        prompts_dir.join("planner-system-prompt.txt"),
+        PLANNER_PROMPT,
+    )?;
 
     if let Ok(bun_install) = std::env::var("BUN_INSTALL") {
         let bun_bin = format!("{bun_install}/bin");
@@ -252,7 +259,14 @@ pub async fn run() -> Result<()> {
     // The service manager (launchd/systemd/sprites supervisor) restarts the daemon,
     // which spawns a fresh opencode. This gives us fresh FDs and a clean epoll state.
     let mut child = tokio::process::Command::new("opencode")
-        .args(["serve", "--log-level", "DEBUG", "--print-logs", "--port", &OPENCODE_PORT.to_string()])
+        .args([
+            "serve",
+            "--log-level",
+            "DEBUG",
+            "--print-logs",
+            "--port",
+            &OPENCODE_PORT.to_string(),
+        ])
         .current_dir(&data_dir)
         .spawn()?;
 
@@ -316,7 +330,9 @@ pub async fn run() -> Result<()> {
                     Ok(crate::nodes::HeartbeatResult::Ok) => {}
                     Ok(crate::nodes::HeartbeatResult::NodeExpired) => {
                         tracing::warn!("node expired from server, re-registering");
-                        if let Err(e) = crate::nodes::register_remote(&heartbeat_url, &heartbeat_node).await {
+                        if let Err(e) =
+                            crate::nodes::register_remote(&heartbeat_url, &heartbeat_node).await
+                        {
                             tracing::warn!("re-registration failed: {e}");
                         }
                     }
@@ -412,6 +428,9 @@ mod tests {
         let pid_path = dir.path().join("opencode.pid");
         std::fs::write(&pid_path, i32::MAX.to_string()).unwrap();
         kill_stale_opencode(&pid_path);
-        assert!(!pid_path.exists(), "pid file must be removed even if pid is dead/invalid");
+        assert!(
+            !pid_path.exists(),
+            "pid file must be removed even if pid is dead/invalid"
+        );
     }
 }
