@@ -8,6 +8,7 @@ import {
   MoonIcon,
   SquaresPlusIcon,
   SunIcon,
+  UserGroupIcon,
 } from "@heroicons/react/24/outline";
 import { TrashIcon } from "@heroicons/react/24/solid";
 import { useParams, usePathname, useRouter } from "next/navigation";
@@ -170,6 +171,16 @@ export default function Cmd() {
           >
             <DocumentTextIcon className="size-4 mr-2" />
             <CommandMenuLabel>Diff</CommandMenuLabel>
+          </CommandMenuItem>
+          <CommandMenuItem
+            textValue="View teams"
+            onAction={() => {
+              setIsOpen(false);
+              router.push("/teams");
+            }}
+          >
+            <UserGroupIcon className="size-4 mr-2" />
+            <CommandMenuLabel>Teams</CommandMenuLabel>
           </CommandMenuItem>
         </CommandMenuSection>
 

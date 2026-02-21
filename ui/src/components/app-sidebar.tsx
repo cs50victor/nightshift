@@ -1,5 +1,9 @@
 "use client";
-import { CubeIcon, DocumentTextIcon } from "@heroicons/react/24/outline";
+import {
+  CubeIcon,
+  DocumentTextIcon,
+  UserGroupIcon,
+} from "@heroicons/react/24/outline";
 import { PlusIcon } from "@heroicons/react/24/solid";
 import { parsePatchFiles } from "@pierre/diffs";
 import { useMemo } from "react";
@@ -100,6 +104,14 @@ export default function AppSidebar(
             >
               <DocumentTextIcon className="size-4 shrink-0" data-slot="icon" />
               <SidebarLabel>Diff</SidebarLabel>
+            </SidebarItem>
+            <SidebarItem
+              tooltip="View Teams"
+              href="/teams"
+              className="cursor-pointer gap-x-2"
+            >
+              <UserGroupIcon className="size-4 shrink-0" data-slot="icon" />
+              <SidebarLabel>Teams</SidebarLabel>
             </SidebarItem>
           </SidebarSection>
         </SidebarSectionGroup>

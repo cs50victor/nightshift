@@ -2,6 +2,8 @@ mod config;
 mod daemon;
 mod nodes;
 mod proxy;
+mod teams;
+mod toolcalls;
 mod update;
 
 use clap::{Parser, Subcommand};

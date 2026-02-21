@@ -1,6 +1,11 @@
 "use client";
 import useSWR from "swr";
-import type { Node } from "@/lib/types";
+import type {
+  MemberDiffDetail,
+  MemberToolHistory,
+  Node,
+  TeamSummary,
+} from "@/lib/types";
 
 const api = {
   fetch: async <T = unknown>(path: string): Promise<T> => {
@@ -99,5 +104,43 @@ export function useNodes() {
     loading: isLoading,
     error: error ?? null,
     refresh: () => mutate(),
+  };
+}
+
+export function useTeams() {
+  const { data, error, isLoading, mutate } = useSWR<TeamSummary[]>(
+    "/teams",
+    swrFetcher,
+    { refreshInterval: 5000 },
+  );
+  return {
+    teams: data ?? [],
+    error: error ?? null,
+    isLoading,
+    refresh: () => mutate(),
+  };
+}
+
+export function useMemberDiff(team: string | null, name: string | null) {
+  const key = team && name ? `/teams/${team}/members/${name}/diff` : null;
+  const { data, error, isLoading } = useSWR<MemberDiffDetail>(key, swrFetcher);
+  return {
+    data: data ?? null,
+    error: error ?? null,
+    isLoading,
+  };
+}
+
+export function useMemberTools(team: string | null, name: string | null) {
+  const key = team && name ? `/teams/${team}/members/${name}/tools` : null;
+  const { data, error, isLoading } = useSWR<MemberToolHistory>(
+    key,
+    swrFetcher,
+    { refreshInterval: 10000 },
+  );
+  return {
+    data: data ?? null,
+    error: error ?? null,
+    isLoading,
   };
 }
