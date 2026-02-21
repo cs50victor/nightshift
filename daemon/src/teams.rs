@@ -8,6 +8,7 @@ use tokio::sync::RwLock;
 
 const TEAMS_POLL_INTERVAL: std::time::Duration = std::time::Duration::from_secs(30);
 const DIFF_REFRESH_INTERVAL: std::time::Duration = std::time::Duration::from_secs(5);
+const FULL_RESCAN_INTERVAL: std::time::Duration = std::time::Duration::from_secs(15);
 const DEBOUNCE_DURATION: std::time::Duration = std::time::Duration::from_millis(100);
 
 // --- MCP config types (read-only, deserialized from ~/.claude/) ---
@@ -393,12 +394,21 @@ pub async fn spawn_watcher(handle: TeamsHandle) {
         }
     }
 
-    let handle_clone = handle.clone();
+    let diff_handle = handle.clone();
     tokio::spawn(async move {
         let mut interval = tokio::time::interval(DIFF_REFRESH_INTERVAL);
         loop {
             interval.tick().await;
-            refresh_diff_summaries(&handle_clone).await;
+            refresh_diff_summaries(&diff_handle).await;
+        }
+    });
+
+    let rescan_handle = handle.clone();
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(FULL_RESCAN_INTERVAL);
+        loop {
+            interval.tick().await;
+            rescan(&rescan_handle).await;
         }
     });
 
