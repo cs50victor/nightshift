@@ -14,9 +14,19 @@ export function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname.replace(/^\/api\/opencode/, "");
   const search = req.nextUrl.search;
 
+  const targetPath = `/api/opencode-proxy${path}${search}`;
+  const internalTarget = new URL(targetPath, req.url);
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set("x-nightshift-node-url", nodeUrl);
+
   if (isLocal(nodeUrl)) {
-    const target = new URL(path + search, nodeUrl);
-    return NextResponse.rewrite(target);
+    requestHeaders.delete("x-nightshift-node-id");
+    requestHeaders.delete("x-nightshift-server-url");
+    return NextResponse.rewrite(internalTarget, {
+      request: {
+        headers: requestHeaders,
+      },
+    });
   }
 
   const nodeId = req.cookies.get("nightshift-node-id")?.value;
@@ -32,11 +42,13 @@ export function middleware(req: NextRequest) {
     );
   }
 
-  const target = new URL(
-    `/proxy/${encodeURIComponent(nodeId)}${path}${search}`,
-    serverUrl,
-  );
-  return NextResponse.rewrite(target);
+  requestHeaders.set("x-nightshift-node-id", nodeId);
+  requestHeaders.set("x-nightshift-server-url", serverUrl);
+  return NextResponse.rewrite(internalTarget, {
+    request: {
+      headers: requestHeaders,
+    },
+  });
 }
 
 export const config = {

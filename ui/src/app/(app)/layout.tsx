@@ -4,8 +4,11 @@ import { useEffect, useState } from "react";
 import { AppSidebarNav } from "@/components/app-sidebar-nav";
 import { BreadcrumbProvider } from "@/contexts/breadcrumb-context";
 import type { Node } from "@/lib/types";
+import { useConfigStore } from "@/stores/config-store";
+import { useEventStore } from "@/stores/event-store";
 import { useModelStore } from "@/stores/model-store";
 import { useNodeStore } from "@/stores/node-store";
+import { useSessionStore } from "@/stores/session-store";
 
 function getNodeCookie(): string | null {
   const match = document.cookie.match(/nightshift-node-url=([^;]+)/);
@@ -42,17 +45,27 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        const providersRes = await fetch("/api/opencode/config/providers");
-        if (providersRes.ok) {
-          const data = await providersRes.json();
-          const firstProvider = data.providers?.[0];
-          const firstModelId = Object.keys(firstProvider?.models ?? {})[0];
-          if (firstProvider && firstModelId) {
-            useModelStore
-              .getState()
-              .setModelFromDefault(`${firstProvider.id}/${firstModelId}`);
-          }
+        await useConfigStore
+          .getState()
+          .loadAll()
+          .catch(() => {});
+        const { providers: loadedProviders, defaultModel } =
+          useConfigStore.getState();
+        const modelKey =
+          defaultModel ||
+          (() => {
+            const fp = loadedProviders[0];
+            const fm = Object.keys(fp?.models ?? {})[0];
+            return fp && fm ? `${fp.id}/${fm}` : null;
+          })();
+        if (modelKey) {
+          useModelStore.getState().setModelFromDefault(modelKey);
         }
+        useEventStore.getState().connect();
+        useSessionStore
+          .getState()
+          .loadSessions()
+          .catch(() => {});
       } catch {
         setError("Node unreachable");
       } finally {
@@ -60,6 +73,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       }
     }
     init();
+    return () => {
+      useEventStore.getState().disconnect();
+    };
   }, [setActiveNode]);
 
   if (loading) {

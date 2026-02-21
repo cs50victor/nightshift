@@ -8,8 +8,8 @@ import {
   SelectLabel,
   SelectTrigger,
 } from "@/components/ui/select";
-import { useAgents } from "@/hooks/use-opencode";
 import { useAgentStore } from "@/stores/agent-store";
+import { useConfigStore } from "@/stores/config-store";
 
 interface AgentSelectProps {
   sessionId: string | null;
@@ -27,8 +27,7 @@ function getDefaultAgentName(agents: Agent[]) {
 }
 
 export function AgentSelect({ sessionId }: AgentSelectProps) {
-  const { data, isLoading } = useAgents();
-  const agents = (data ?? []) as Agent[];
+  const agents = useConfigStore((s) => s.agents);
 
   const selectedAgent = useAgentStore((s) => s.getSelectedAgent(sessionId));
   const setSelectedAgent = useAgentStore((s) => s.setSelectedAgent);
@@ -46,7 +45,7 @@ export function AgentSelect({ sessionId }: AgentSelectProps) {
   return (
     <Select
       aria-label="Agent"
-      placeholder={isLoading ? "Loading agents..." : "Select agent"}
+      placeholder={agents.length === 0 ? "Loading agents..." : "Select agent"}
       className="w-auto"
       selectedKey={selectedAgent}
       onSelectionChange={(key) => {

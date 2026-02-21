@@ -7,14 +7,20 @@ import { useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader } from "@/components/ui/loader";
 import { useBreadcrumb } from "@/contexts/breadcrumb-context";
-import { useGitDiff, useProjectPath } from "@/hooks/use-opencode";
+import { useGitDiff, useProjectPath } from "@/lib/api";
+
+const DIFF_OPTIONS = {
+  diffStyle: "unified" as const,
+  diffIndicators: "bars" as const,
+  theme: "github-dark" as const,
+};
 
 export default function DiffPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const path = searchParams.get("path");
   const { data: projectPath } = useProjectPath();
-  const { data, error, isLoading, mutate } = useGitDiff(path);
+  const { data, error, isLoading, refresh } = useGitDiff(path);
   const { setPageTitle } = useBreadcrumb();
 
   useEffect(() => {
@@ -68,7 +74,7 @@ export default function DiffPage() {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-4">
         <div className="text-danger">Error loading diff: {error.message}</div>
-        <Button onPress={() => mutate()}>
+        <Button onPress={() => refresh()}>
           <ArrowPathIcon className="size-4" />
           Retry
         </Button>
@@ -80,7 +86,7 @@ export default function DiffPage() {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-4">
         <div className="text-muted-fg">No changes detected</div>
-        <Button onPress={() => mutate()}>
+        <Button onPress={() => refresh()}>
           <ArrowPathIcon className="size-4" />
           Refresh
         </Button>
@@ -110,7 +116,7 @@ export default function DiffPage() {
             <span className="text-danger">-{summary.deletions}</span>
           </div>
         </div>
-        <Button intent="secondary" size="sm" onPress={() => mutate()}>
+        <Button intent="secondary" size="sm" onPress={() => refresh()}>
           <ArrowPathIcon className="size-4" />
           Refresh
         </Button>
@@ -121,11 +127,7 @@ export default function DiffPage() {
           <FileDiff
             key={file.name || file.prevName || index}
             fileDiff={file}
-            options={{
-              diffStyle: "unified",
-              diffIndicators: "bars",
-              theme: "github-dark",
-            }}
+            options={DIFF_OPTIONS}
           />
         ))}
       </div>

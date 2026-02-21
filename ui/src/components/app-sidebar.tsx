@@ -2,8 +2,7 @@
 import { CubeIcon, DocumentTextIcon } from "@heroicons/react/24/outline";
 import { PlusIcon } from "@heroicons/react/24/solid";
 import { parsePatchFiles } from "@pierre/diffs";
-import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Link as UILink } from "@/components/ui/link";
 import {
   Sidebar,
@@ -15,12 +14,8 @@ import {
   SidebarSection,
   SidebarSectionGroup,
 } from "@/components/ui/sidebar";
-import { toast } from "@/components/ui/toast";
-import {
-  useCreateSession,
-  useCurrentProject,
-  useGitDiff,
-} from "@/hooks/use-opencode";
+import { useCurrentProject, useGitDiff } from "@/lib/api";
+import { useCreateSession } from "@/lib/use-create-session";
 
 interface Project {
   id: string;
@@ -39,9 +34,7 @@ function getProjectName(worktree: string): string {
 }
 
 function CurrentProject() {
-  const { data: currentProject } = useCurrentProject() as {
-    data: Project | undefined;
-  };
+  const { data: currentProject } = useCurrentProject<Project>();
 
   const projectName = currentProject
     ? getProjectName(currentProject.worktree)
@@ -58,9 +51,7 @@ function CurrentProject() {
 export default function AppSidebar(
   props: React.ComponentProps<typeof Sidebar>,
 ) {
-  const [creating, setCreating] = useState(false);
-  const router = useRouter();
-  const createSession = useCreateSession();
+  const { creating, handleNewSession } = useCreateSession();
 
   const { data: diffData } = useGitDiff();
   const diffFileCount = useMemo(() => {
@@ -72,21 +63,6 @@ export default function AppSidebar(
       return 0;
     }
   }, [diffData?.diff]);
-
-  async function handleNewSession() {
-    if (creating) return;
-    setCreating(true);
-    try {
-      const session = await createSession();
-      toast.success("Session created");
-      router.push(`/session/${session.id}`);
-    } catch (error) {
-      console.error("Failed to create session:", error);
-      toast.error("Failed to create session");
-    } finally {
-      setCreating(false);
-    }
-  }
 
   return (
     <Sidebar {...props}>
