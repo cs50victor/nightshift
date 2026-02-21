@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import {
   Select,
   SelectContent,
+  SelectDescription,
   SelectItem,
   SelectLabel,
   SelectTrigger,
@@ -61,12 +62,7 @@ export function AgentSelect({ sessionId, triggerClassName }: AgentSelectProps) {
           <SelectItem id={agent.name} textValue={agent.name}>
             <SelectLabel>{agent.name}</SelectLabel>
             {agent.description && (
-              <span
-                className="col-start-2 row-start-2 truncate max-w-[200px] text-muted-fg text-xs"
-                title={agent.description}
-              >
-                {agent.description}
-              </span>
+              <SelectDescription>{agent.description}</SelectDescription>
             )}
           </SelectItem>
         )}

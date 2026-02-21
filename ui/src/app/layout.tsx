@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import "@fontsource-variable/geist-mono";
-import "@fontsource/geist-sans";
+import "@fontsource-variable/archivo";
 import "./globals.css";
 import { Providers } from "./providers";
 

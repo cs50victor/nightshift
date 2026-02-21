@@ -3,7 +3,14 @@ import type { Agent, Provider } from "@opencode-ai/sdk";
 import { create } from "zustand";
 import api from "@/lib/api";
 
-const HIDDEN_AGENTS = new Set(["compaction", "title", "summary"]);
+const HIDDEN_AGENTS = new Set([
+  "plan",
+  "general",
+  "explore",
+  "compaction",
+  "title",
+  "summary",
+]);
 
 interface ConfigState {
   providers: Provider[];

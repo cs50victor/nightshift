@@ -66,8 +66,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           .getState()
           .loadSessions()
           .catch(() => {});
-      } catch {
-        setError("Node unreachable");
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Node unreachable");
       } finally {
         setLoading(false);
       }

@@ -8,7 +8,7 @@ import {
   useFileMention,
 } from "@/components/file-mention-popover";
 import { ModelSelect } from "@/components/model-select";
-import { Button } from "@/components/ui/button";
+import { Button, buttonStyles } from "@/components/ui/button";
 import { Menu, MenuContent, MenuItem, MenuTrigger } from "@/components/ui/menu";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -180,14 +180,14 @@ export function ChatInput({
           <div className="flex items-center gap-1 px-2 py-1.5">
             <Menu>
               <MenuTrigger>
-                <Button
-                  intent="plain"
-                  size="sq-xs"
+                <div
+                  role="button"
+                  tabIndex={0}
                   aria-label="Attach"
-                  className="rounded-lg"
+                  className={buttonStyles({ intent: "plain", size: "sq-xs", className: "rounded-lg cursor-default" })}
                 >
                   <Plus data-slot="icon" className="size-4" />
-                </Button>
+                </div>
               </MenuTrigger>
               <MenuContent placement="top">
                 <MenuItem onAction={() => imageInputRef.current?.click()}>
