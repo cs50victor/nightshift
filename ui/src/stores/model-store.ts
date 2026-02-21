@@ -12,7 +12,8 @@ const DEFAULT_MODEL: SelectedModel = {
   modelID: "",
 };
 
-function parseModelKey(key: string): SelectedModel {
+function parseModelKey(key: string | undefined): SelectedModel {
+  if (typeof key !== "string") return { ...DEFAULT_MODEL };
   const [providerID = "", ...rest] = key.split("/");
   const modelID = rest.join("/");
   return { providerID, modelID };

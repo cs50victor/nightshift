@@ -3,11 +3,13 @@ use bytes::Bytes;
 use http_body_util::{Either, Full};
 use hyper::body::Incoming;
 use hyper::service::service_fn;
-use hyper::{Request, Response, StatusCode};
+use hyper::{Method, Request, Response, StatusCode};
 use hyper_util::rt::TokioIo;
 use std::convert::Infallible;
 use std::time::Duration;
 use tokio::net::{TcpListener, TcpStream};
+
+use crate::teams::TeamsHandle;
 
 type ProxyBody = Either<Incoming, Full<Bytes>>;
 
@@ -15,19 +17,71 @@ const STARTUP_RETRY_WINDOW: Duration = Duration::from_secs(8);
 const STARTUP_MAX_RETRIES: u32 = 5;
 const STARTUP_RETRY_DELAY: Duration = Duration::from_millis(200);
 
+fn json_response(status: StatusCode, body: String) -> Response<ProxyBody> {
+    Response::builder()
+        .status(status)
+        .header("content-type", "application/json")
+        .body(Either::Right(Full::new(Bytes::from(body))))
+        .unwrap()
+}
+
+fn parse_team_member_path<'a>(path: &'a str, suffix: &str) -> Option<(&'a str, &'a str)> {
+    // /teams/{team}/members/{name}/{suffix}
+    let path = path.strip_prefix("/teams/")?;
+    let (team, rest) = path.split_once('/')?;
+    let rest = rest.strip_prefix("members/")?;
+    let (name, rest) = rest.split_once('/')?;
+    if rest == suffix {
+        Some((team, name))
+    } else {
+        None
+    }
+}
+
 async fn handle(
     mut req: Request<Incoming>,
     opencode_port: u16,
     project_path: &str,
     start_time: std::time::Instant,
+    teams: TeamsHandle,
 ) -> Result<Response<ProxyBody>, Infallible> {
     if req.uri().path() == "/project/absolute_path" {
         let body = format!(r#"{{"path":"{}"}}"#, project_path);
-        return Ok(Response::builder()
-            .status(StatusCode::OK)
-            .header("content-type", "application/json")
-            .body(Either::Right(Full::new(Bytes::from(body))))
-            .unwrap());
+        return Ok(json_response(StatusCode::OK, body));
+    }
+
+    if req.uri().path() == "/teams" && *req.method() == Method::GET {
+        let summaries = crate::teams::get_teams_summary(&teams).await;
+        let body = serde_json::to_string(&summaries).unwrap_or_else(|_| "[]".into());
+        return Ok(json_response(StatusCode::OK, body));
+    }
+
+    if let Some((team, name)) = parse_team_member_path(req.uri().path(), "diff") {
+        if *req.method() == Method::GET {
+            return Ok(
+                match crate::teams::get_member_diff(&teams, team, name).await {
+                    Some(d) => {
+                        let body = serde_json::to_string(&d).unwrap_or_else(|_| "{}".into());
+                        json_response(StatusCode::OK, body)
+                    }
+                    None => json_response(StatusCode::NOT_FOUND, r#"{"error":"not found"}"#.into()),
+                },
+            );
+        }
+    }
+
+    if let Some((team, name)) = parse_team_member_path(req.uri().path(), "tools") {
+        if *req.method() == Method::GET {
+            return Ok(
+                match crate::teams::get_member_tools(&teams, team, name).await {
+                    Some(t) => {
+                        let body = serde_json::to_string(&t).unwrap_or_else(|_| "{}".into());
+                        json_response(StatusCode::OK, body)
+                    }
+                    None => json_response(StatusCode::NOT_FOUND, r#"{"error":"not found"}"#.into()),
+                },
+            );
+        }
     }
 
     let is_upgrade = req.headers().contains_key(hyper::header::UPGRADE);
@@ -121,6 +175,7 @@ pub async fn serve(
     listen_port: u16,
     project_path: String,
     start_time: std::time::Instant,
+    teams: TeamsHandle,
 ) -> Result<()> {
     let listener = TcpListener::bind(("0.0.0.0", listen_port))
         .await
@@ -132,12 +187,14 @@ pub async fn serve(
         let io = TokioIo::new(stream);
         let path = project_path.clone();
         let st = start_time;
+        let teams = teams.clone();
         tokio::spawn(async move {
             let svc = service_fn(move |req: Request<Incoming>| {
                 let port = opencode_port;
                 let p = path.clone();
                 let st = st;
-                async move { handle(req, port, &p, st).await }
+                let teams = teams.clone();
+                async move { handle(req, port, &p, st, teams).await }
             });
             if let Err(e) = hyper::server::conn::http1::Builder::new()
                 .serve_connection(io, svc)

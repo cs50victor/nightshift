@@ -348,6 +348,9 @@ pub async fn run() -> Result<()> {
     // also stop firing. OS thread uses nanosleep/futex, which resumes regardless.
     spawn_watchdog(child_pid);
 
+    let teams_handle = crate::teams::new_handle();
+    tokio::spawn(crate::teams::spawn_watcher(teams_handle.clone()));
+
     let start_time = std::time::Instant::now();
 
     tokio::select! {
@@ -361,7 +364,7 @@ pub async fn run() -> Result<()> {
             tracing::error!("opencode exited: {:?}, daemon will exit", status);
             std::process::exit(1);
         }
-        result = crate::proxy::serve(OPENCODE_PORT, proxy_port, data_dir.to_string_lossy().into_owned(), start_time) => {
+        result = crate::proxy::serve(OPENCODE_PORT, proxy_port, data_dir.to_string_lossy().into_owned(), start_time, teams_handle.clone()) => {
             tracing::error!("proxy server failed: {:?}", result);
             child.kill().await.ok();
             std::process::exit(1);

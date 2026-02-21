@@ -1,34 +1,15 @@
 "use client";
 import { EllipsisHorizontalIcon } from "@heroicons/react/24/outline";
 import { PlusIcon } from "@heroicons/react/24/solid";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
 import { Breadcrumbs, BreadcrumbsItem } from "@/components/ui/breadcrumbs";
 import { Button } from "@/components/ui/button";
-import { toast } from "@/components/ui/toast";
 import { useBreadcrumb } from "@/contexts/breadcrumb-context";
-import { useCreateSession } from "@/hooks/use-opencode";
+import { useCreateSession } from "@/lib/use-create-session";
 import { NodeSelect } from "./node-select";
 
 export function AppSidebarNav() {
   const { pageTitle } = useBreadcrumb();
-  const [isCreatingSession, setIsCreatingSession] = useState(false);
-  const router = useRouter();
-  const createSession = useCreateSession();
-
-  const handleNewSession = async () => {
-    setIsCreatingSession(true);
-    try {
-      const session = await createSession();
-      toast.success("Session created");
-      router.push(`/session/${session.id}`);
-    } catch (err) {
-      console.error("Failed to create session:", err);
-      toast.error("Failed to create session");
-    } finally {
-      setIsCreatingSession(false);
-    }
-  };
+  const { creating, handleNewSession } = useCreateSession();
 
   return (
     <nav className="sticky top-0 z-10 flex items-center justify-between border-b bg-bg px-4 py-2">
@@ -43,10 +24,10 @@ export function AppSidebarNav() {
           intent="outline"
           className="uppercase font-mono text-muted-fg hover:text-fg"
           onPress={handleNewSession}
-          isDisabled={isCreatingSession}
+          isDisabled={creating}
         >
           <PlusIcon className="size-3.5" />
-          {isCreatingSession ? "Creating..." : "New Session"}
+          {creating ? "Creating..." : "New Session"}
         </Button>
         <Button
           size="xs"

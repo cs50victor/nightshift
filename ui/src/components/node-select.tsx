@@ -12,7 +12,7 @@ import {
   MenuTrigger,
 } from "@/components/ui/menu";
 import { toast } from "@/components/ui/toast";
-import { useDeleteMachine, useNodes } from "@/hooks/use-opencode";
+import api, { useNodes } from "@/lib/api";
 import type { Node } from "@/lib/types";
 import { useNodeStore } from "@/stores/node-store";
 import { CreateNodeModal } from "./create-node-modal";
@@ -22,13 +22,10 @@ function isLocal(url: string) {
 }
 
 export function NodeSelect() {
-  const { data, mutate } = useNodes();
+  const { nodes, refresh: refreshNodes } = useNodes();
   const activeNodeUrl = useNodeStore((s) => s.activeNodeUrl);
   const setActiveNode = useNodeStore((s) => s.setActiveNode);
-  const deleteMachine = useDeleteMachine();
   const [modalOpen, setModalOpen] = useState(false);
-
-  const nodes: Node[] = data?.nodes ?? [];
 
   const handleSelect = (url: string, id: string) => {
     if (url === activeNodeUrl) return;
@@ -39,7 +36,7 @@ export function NodeSelect() {
   const handleDelete = async (node: Node) => {
     const machineName = node.machineName ?? node.name;
     try {
-      await deleteMachine(machineName);
+      await api.deleteRaw(`/api/machines/${machineName}`);
       toast.success(`Deleted ${node.name}`);
       if (node.url === activeNodeUrl) {
         const remaining = nodes.filter((n) => n.url !== node.url);
@@ -47,7 +44,7 @@ export function NodeSelect() {
           setActiveNode(remaining[0].url, remaining[0].id);
         }
       }
-      await mutate();
+      refreshNodes();
       if (node.url === activeNodeUrl) {
         window.location.reload();
       }

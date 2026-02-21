@@ -2,7 +2,7 @@
 @plugin "@tailwindcss/typography";
 @plugin "tailwindcss-react-aria-components";
 
-@import "@fontsource/geist-sans";
+@import "@fontsource-variable/archivo";
 @import "@fontsource-variable/geist-mono";
 
 @custom-variant dark (&:is(.dark *));
@@ -76,7 +76,7 @@
   --radius-3xl: calc(var(--radius-lg) * 2);
   --radius-4xl: calc(var(--radius-lg) * 3);
 
-  --font-sans: "Geist Sans", sans-serif;
+  --font-sans: "Archivo Variable", sans-serif;
   --font-mono: "Geist Mono Variable", monospace;
 
   --bg: oklch(1 0 0);
@@ -145,7 +145,7 @@
 }
 
 .dark {
-  --bg: oklch(0.181 0.005 285.823);
+  --bg: oklch(0.213 0 0);
   --fg: oklch(0.985 0 0);
 
   --primary: oklch(0.546 0.245 262.881);
@@ -213,7 +213,7 @@
 body {
   background: var(--bg);
   color: var(--fg);
-  font-family: var(--font-sans, "Geist Sans", sans-serif);
+  font-family: var(--font-sans, "Archivo Variable", sans-serif);
 }
 
 .font-mono {

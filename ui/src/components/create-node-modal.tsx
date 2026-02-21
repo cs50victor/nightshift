@@ -10,7 +10,7 @@ import {
   SheetFooter,
   SheetHeader,
 } from "@/components/ui/sheet";
-import { useCreateMachine, useNodes } from "@/hooks/use-opencode";
+import api, { useNodes } from "@/lib/api";
 import type { Node } from "@/lib/types";
 import { useNodeStore } from "@/stores/node-store";
 
@@ -26,22 +26,24 @@ export function CreateNodeModal({
   const [name, setName] = useState("");
   const [status, setStatus] = useState<"idle" | "creating" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
-  const createMachine = useCreateMachine();
-  const { mutate: mutateNodes } = useNodes();
+  const { refresh: refreshNodes } = useNodes();
   const setActiveNode = useNodeStore((s) => s.setActiveNode);
 
   const handleCreate = async () => {
     setStatus("creating");
     setError(null);
     try {
-      const { nodeId } = await createMachine(name.trim() || undefined);
+      const { nodeId } = await api.postRaw<{ name: string; nodeId: string }>(
+        "/api/machines",
+        name.trim() ? { name: name.trim() } : undefined,
+      );
       const res = await fetch("/api/nodes");
       const data = await res.json();
       const node = (data.nodes as Node[])?.find((n) => n.id === nodeId);
       if (node) {
         setActiveNode(node.url, node.id);
       }
-      await mutateNodes();
+      refreshNodes();
       onOpenChange(false);
       setStatus("idle");
       window.location.reload();

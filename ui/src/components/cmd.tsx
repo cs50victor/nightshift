@@ -8,6 +8,7 @@ import {
   MoonIcon,
   SquaresPlusIcon,
   SunIcon,
+  UserGroupIcon,
 } from "@heroicons/react/24/outline";
 import { TrashIcon } from "@heroicons/react/24/solid";
 import { useParams, usePathname, useRouter } from "next/navigation";
@@ -22,14 +23,11 @@ import {
   CommandMenuSeparator,
 } from "@/components/ui/command-menu";
 import { toast } from "@/components/ui/toast";
-import {
-  useCreateSession,
-  useDeleteSession,
-  useSessions,
-} from "@/hooks/use-opencode";
-import { mutateSessionMessages } from "@/hooks/use-session-messages";
+import { useCreateSession } from "@/lib/use-create-session";
 import { useTheme } from "@/providers/theme-provider";
+import { useMessageStore } from "@/stores/message-store";
 import { useModelStore } from "@/stores/model-store";
+import { useSessionStore } from "@/stores/session-store";
 
 const CREATE_PR_PROMPT = `Use gh CLI to create a pull request. Follow these steps:
 
@@ -79,22 +77,16 @@ Make sure to:
 
 export default function Cmd() {
   const [isOpen, setIsOpen] = useState(false);
-  const [creating, setCreating] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
   const params = useParams();
-  const { mutate } = useSessions();
-  const createSession = useCreateSession();
-  const deleteSession = useDeleteSession();
+  const { creating, handleNewSession } = useCreateSession();
+  const deleteSession = useSessionStore((s) => s.deleteSession);
   const selectedModel = useModelStore((s) => s.selectedModel);
   const { setTheme } = useTheme();
 
   const currentSessionId = params.id as string | undefined;
   const isOnSessionPage = pathname.startsWith("/session/") && currentSessionId;
-
-  useEffect(() => {
-    setIsOpen(false);
-  }, []);
 
   useEffect(() => {
     const handler = () => setIsOpen(true);
@@ -107,36 +99,10 @@ export default function Cmd() {
       toast.error("Please open a session first");
       return;
     }
-    const response = await fetch(
-      `/api/opencode/session/${currentSessionId}/prompt_async`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          parts: [{ type: "text", text: prompt }],
-          model: selectedModel,
-        }),
-      },
-    );
-    if (!response.ok) throw new Error("Failed to send request");
-    mutateSessionMessages(currentSessionId);
-    mutate();
-  }
-
-  async function handleNewSession() {
-    setCreating(true);
-    setIsOpen(false);
-    try {
-      const newSession = await createSession();
-      await mutate();
-      toast.success("Session created");
-      router.push(`/session/${newSession.id}`);
-    } catch (err) {
-      console.error("Failed to create session:", err);
-      toast.error("Failed to create session");
-    } finally {
-      setCreating(false);
-    }
+    await useMessageStore.getState().sendMessage(currentSessionId, {
+      text: prompt,
+      model: selectedModel,
+    });
   }
 
   async function handleDeleteSession() {
@@ -145,7 +111,6 @@ export default function Cmd() {
     setIsOpen(false);
     try {
       await deleteSession(currentSessionId);
-      await mutate();
       toast.success("Session deleted");
       router.push("/");
     } catch (err) {
@@ -186,7 +151,10 @@ export default function Cmd() {
         <CommandMenuSection label="Actions">
           <CommandMenuItem
             textValue="New session"
-            onAction={handleNewSession}
+            onAction={() => {
+              setIsOpen(false);
+              handleNewSession();
+            }}
             isDisabled={creating}
           >
             <SquaresPlusIcon className="size-4 mr-2" />
@@ -203,6 +171,16 @@ export default function Cmd() {
           >
             <DocumentTextIcon className="size-4 mr-2" />
             <CommandMenuLabel>Diff</CommandMenuLabel>
+          </CommandMenuItem>
+          <CommandMenuItem
+            textValue="View teams"
+            onAction={() => {
+              setIsOpen(false);
+              router.push("/teams");
+            }}
+          >
+            <UserGroupIcon className="size-4 mr-2" />
+            <CommandMenuLabel>Teams</CommandMenuLabel>
           </CommandMenuItem>
         </CommandMenuSection>
 

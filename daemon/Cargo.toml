@@ -22,8 +22,17 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 semver = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-time = { version = "0.3", features = ["formatting"] }
+time = { version = "0.3", features = ["formatting", "parsing"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+# NOTE(victor): Do NOT use macos_kqueue feature. kqueue watches file descriptors
+# (inodes), not paths. Atomic saves (write temp + rename) make the watch stale
+# because the fd points to the old inode. FSEvents (the default) watches the
+# directory tree and handles renames correctly.
+# See: https://github.com/notify-rs/notify/issues/365
+#      https://github.com/notify-rs/notify/issues/165
+#      https://github.com/fsnotify/fsnotify/issues/17
+notify = "7"
+rusqlite = { version = "0.32", features = ["bundled"] }
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"

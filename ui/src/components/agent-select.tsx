@@ -4,15 +4,17 @@ import { useEffect } from "react";
 import {
   Select,
   SelectContent,
+  SelectDescription,
   SelectItem,
   SelectLabel,
   SelectTrigger,
 } from "@/components/ui/select";
-import { useAgents } from "@/hooks/use-opencode";
 import { useAgentStore } from "@/stores/agent-store";
+import { useConfigStore } from "@/stores/config-store";
 
 interface AgentSelectProps {
   sessionId: string | null;
+  triggerClassName?: string;
 }
 
 function isValidAgent(agents: Agent[], name?: string) {
@@ -26,9 +28,8 @@ function getDefaultAgentName(agents: Agent[]) {
   );
 }
 
-export function AgentSelect({ sessionId }: AgentSelectProps) {
-  const { data, isLoading } = useAgents();
-  const agents = (data ?? []) as Agent[];
+export function AgentSelect({ sessionId, triggerClassName }: AgentSelectProps) {
+  const agents = useConfigStore((s) => s.agents);
 
   const selectedAgent = useAgentStore((s) => s.getSelectedAgent(sessionId));
   const setSelectedAgent = useAgentStore((s) => s.setSelectedAgent);
@@ -46,7 +47,7 @@ export function AgentSelect({ sessionId }: AgentSelectProps) {
   return (
     <Select
       aria-label="Agent"
-      placeholder={isLoading ? "Loading agents..." : "Select agent"}
+      placeholder={agents.length === 0 ? "Loading agents..." : "Select agent"}
       className="w-auto"
       selectedKey={selectedAgent}
       onSelectionChange={(key) => {
@@ -55,18 +56,13 @@ export function AgentSelect({ sessionId }: AgentSelectProps) {
         }
       }}
     >
-      <SelectTrigger className="w-40" />
+      <SelectTrigger className={triggerClassName ?? "w-40"} />
       <SelectContent items={agents}>
         {(agent) => (
           <SelectItem id={agent.name} textValue={agent.name}>
             <SelectLabel>{agent.name}</SelectLabel>
             {agent.description && (
-              <span
-                className="col-start-2 row-start-2 truncate max-w-[200px] text-muted-fg text-xs"
-                title={agent.description}
-              >
-                {agent.description}
-              </span>
+              <SelectDescription>{agent.description}</SelectDescription>
             )}
           </SelectItem>
         )}

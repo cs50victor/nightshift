@@ -10,13 +10,15 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@fontsource-variable/archivo": "^5.2.8",
     "@fontsource-variable/geist-mono": "5.2.7",
-    "@fontsource/geist-sans": "5.2.5",
     "@heroicons/react": "2.2.0",
-    "@opencode-ai/sdk": "1.2.5",
+    "@opencode-ai/sdk": "1.2.10",
     "@pierre/diffs": "1.0.11",
     "diff": "8.0.3",
+    "framer-motion": "^12.34.3",
     "ldrs": "1.1.9",
+    "lucide-react": "^0.575.0",
     "next": "15.5.12",
     "react": "19.2.4",
     "react-aria-components": "1.15.1",

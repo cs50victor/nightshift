@@ -1,28 +1,12 @@
 "use client";
 import { SquaresPlusIcon } from "@heroicons/react/24/outline";
-import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Keyboard } from "@/components/ui/keyboard";
-import { useCreateSession } from "@/hooks/use-opencode";
+import { useCreateSession } from "@/lib/use-create-session";
 
 export default function EmptyState() {
-  const router = useRouter();
-  const [creating, setCreating] = useState(false);
-  const createSession = useCreateSession();
-
-  const handleNewSession = useCallback(async () => {
-    if (creating) return;
-    setCreating(true);
-    try {
-      const newSession = await createSession();
-      router.push(`/session/${newSession.id}`);
-    } catch (err) {
-      console.error("Failed to create session:", err);
-    } finally {
-      setCreating(false);
-    }
-  }, [creating, createSession, router]);
+  const { creating, handleNewSession } = useCreateSession();
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {

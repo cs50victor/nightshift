@@ -1,5 +1,5 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import {
   Autocomplete,
   ListBox,
@@ -14,24 +14,12 @@ import {
   SelectSection,
   SelectTrigger,
 } from "@/components/ui/select";
-import { useProviders } from "@/hooks/use-opencode";
+import { useConfigStore } from "@/stores/config-store";
 import { useModelStore } from "@/stores/model-store";
 
 interface ModelItem {
   id: string;
   name: string;
-}
-
-interface ModelData {
-  id: string;
-  name: string;
-  providerID: string;
-}
-
-interface Provider {
-  id: string;
-  name: string;
-  models: Record<string, ModelData>;
 }
 
 interface ProviderWithModels {
@@ -40,51 +28,35 @@ interface ProviderWithModels {
   models: ModelItem[];
 }
 
-interface ModelsData {
-  providers: ProviderWithModels[];
-  defaultModel: string | null;
+interface ModelSelectProps {
+  triggerClassName?: string;
 }
 
-function transformProviders(data: {
-  providers?: Provider[];
-  default?: Record<string, string>;
-}): ModelsData {
-  const providers = data?.providers || [];
-  const defaults = data?.default || {};
-
-  let defaultModel: string | null = null;
-  for (const [providerId, modelId] of Object.entries(defaults)) {
-    if (modelId) {
-      defaultModel = `${providerId}/${modelId}`;
-      break;
-    }
-  }
-
-  return {
-    providers: providers.map((provider) => ({
-      id: provider.id,
-      name: provider.name,
-      models: Object.values(provider.models || {}).map((model) => ({
-        id: `${provider.id}/${model.id}`,
-        name: model.name,
-      })),
-    })),
-    defaultModel,
-  };
-}
-
-export function ModelSelect() {
-  const { data: rawData, isLoading } = useProviders();
+export function ModelSelect({ triggerClassName }: ModelSelectProps = {}) {
+  const rawProviders = useConfigStore((s) => s.providers);
+  const defaultModel = useConfigStore((s) => s.defaultModel);
   const { contains } = useFilter({ sensitivity: "base" });
 
   const selectedModel = useModelStore((s) => s.selectedModel);
   const setModelFromKey = useModelStore((s) => s.setModelFromKey);
   const setModelFromDefault = useModelStore((s) => s.setModelFromDefault);
 
-  const data = rawData ? transformProviders(rawData) : null;
-  const providers = data?.providers ?? [];
-  const defaultModel = data?.defaultModel ?? null;
-  const selectedModelKey = `${selectedModel.providerID}/${selectedModel.modelID}`;
+  const providers: ProviderWithModels[] = useMemo(
+    () =>
+      rawProviders.map((provider) => ({
+        id: provider.id,
+        name: provider.name,
+        models: Object.values(provider.models || {}).map((model) => ({
+          id: `${provider.id}/${model.id}`,
+          name: model.name,
+        })),
+      })),
+    [rawProviders],
+  );
+  const selectedModelKey =
+    selectedModel.providerID && selectedModel.modelID
+      ? `${selectedModel.providerID}/${selectedModel.modelID}`
+      : null;
 
   useEffect(() => {
     if (defaultModel) {
@@ -95,7 +67,9 @@ export function ModelSelect() {
   return (
     <Select
       aria-label="Model"
-      placeholder={isLoading ? "Loading models..." : "Select a model"}
+      placeholder={
+        rawProviders.length === 0 ? "Loading models..." : "Select a model"
+      }
       className="w-auto"
       selectedKey={selectedModelKey}
       onSelectionChange={(key) => {
@@ -104,7 +78,7 @@ export function ModelSelect() {
         }
       }}
     >
-      <SelectTrigger className="w-48" />
+      <SelectTrigger className={triggerClassName ?? "w-48"} />
       <Popover className="entering:fade-in exiting:fade-out flex max-h-96 w-(--trigger-width) entering:animate-in exiting:animate-out flex-col overflow-hidden rounded-lg border bg-overlay">
         <Dialog aria-label="Model">
           <Autocomplete filter={contains}>
