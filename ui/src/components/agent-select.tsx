@@ -13,6 +13,7 @@ import { useConfigStore } from "@/stores/config-store";
 
 interface AgentSelectProps {
   sessionId: string | null;
+  triggerClassName?: string;
 }
 
 function isValidAgent(agents: Agent[], name?: string) {
@@ -26,7 +27,7 @@ function getDefaultAgentName(agents: Agent[]) {
   );
 }
 
-export function AgentSelect({ sessionId }: AgentSelectProps) {
+export function AgentSelect({ sessionId, triggerClassName }: AgentSelectProps) {
   const agents = useConfigStore((s) => s.agents);
 
   const selectedAgent = useAgentStore((s) => s.getSelectedAgent(sessionId));
@@ -54,7 +55,7 @@ export function AgentSelect({ sessionId }: AgentSelectProps) {
         }
       }}
     >
-      <SelectTrigger className="w-40" />
+      <SelectTrigger className={triggerClassName ?? "w-40"} />
       <SelectContent items={agents}>
         {(agent) => (
           <SelectItem id={agent.name} textValue={agent.name}>
