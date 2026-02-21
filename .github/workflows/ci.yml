@@ -41,6 +41,28 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Read OpenCode version from sprite setup
+        id: opencode-version
+        run: |
+          VERSION=$(sed -n 's/^OPENCODE_VERSION="\([^"]*\)"/\1/p' server/src/scripts/setup-sprite.sh)
+          if [ -z "$VERSION" ]; then
+            echo "failed to read OPENCODE_VERSION from setup-sprite.sh" >&2
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Cache OpenCode
+        uses: actions/cache@v4
+        with:
+          path: ~/.opencode
+          key: opencode-${{ runner.os }}-${{ steps.opencode-version.outputs.version }}
+
+      - name: Install OpenCode
+        run: |
+          curl -fsSL https://opencode.ai/install | bash -s -- --version "${{ steps.opencode-version.outputs.version }}" --no-modify-path
+          echo "$HOME/.opencode/bin" >> "$GITHUB_PATH"
+          opencode --version
+
       - uses: oven-sh/setup-bun@v2
 
       - name: Install dependencies
@@ -66,6 +88,28 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Read OpenCode version from sprite setup
+        id: opencode-version
+        run: |
+          VERSION=$(sed -n 's/^OPENCODE_VERSION="\([^"]*\)"/\1/p' server/src/scripts/setup-sprite.sh)
+          if [ -z "$VERSION" ]; then
+            echo "failed to read OPENCODE_VERSION from setup-sprite.sh" >&2
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Cache OpenCode
+        uses: actions/cache@v4
+        with:
+          path: ~/.opencode
+          key: opencode-${{ runner.os }}-${{ steps.opencode-version.outputs.version }}
+
+      - name: Install OpenCode
+        run: |
+          curl -fsSL https://opencode.ai/install | bash -s -- --version "${{ steps.opencode-version.outputs.version }}" --no-modify-path
+          echo "$HOME/.opencode/bin" >> "$GITHUB_PATH"
+          opencode --version
+
       - uses: oven-sh/setup-bun@v2
 
       - name: Install dependencies
@@ -86,6 +130,28 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Read OpenCode version from sprite setup
+        id: opencode-version
+        run: |
+          VERSION=$(sed -n 's/^OPENCODE_VERSION="\([^"]*\)"/\1/p' server/src/scripts/setup-sprite.sh)
+          if [ -z "$VERSION" ]; then
+            echo "failed to read OPENCODE_VERSION from setup-sprite.sh" >&2
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Cache OpenCode
+        uses: actions/cache@v4
+        with:
+          path: ~/.opencode
+          key: opencode-${{ runner.os }}-${{ steps.opencode-version.outputs.version }}
+
+      - name: Install OpenCode
+        run: |
+          curl -fsSL https://opencode.ai/install | bash -s -- --version "${{ steps.opencode-version.outputs.version }}" --no-modify-path
+          echo "$HOME/.opencode/bin" >> "$GITHUB_PATH"
+          opencode --version
 
       - uses: dtolnay/rust-toolchain@stable
 

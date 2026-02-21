@@ -8,16 +8,18 @@ set -euo pipefail
 
 : "${SPRITE_NAME:?SPRITE_NAME is required}"
 
+OPENCODE_VERSION="1.2.10"
+
 NIGHTSHIFT_DIR="$HOME/.nightshift"
 DAEMON_BIN="$NIGHTSHIFT_DIR/nightshift-daemon"
 
 hostname "$SPRITE_NAME"
 
 echo "--- installing opencode ---"
-curl -fsSL https://opencode.ai/install | bash
+curl -fsSL https://opencode.ai/install | bash -s -- --version "$OPENCODE_VERSION"
 OPENCODE_BIN="$HOME/.opencode/bin"
 export PATH="$OPENCODE_BIN:$PATH"
-echo "opencode installed at: $(which opencode)"
+echo "opencode installed at: $(which opencode) (version $(opencode --version))"
 
 echo "--- downloading daemon ---"
 mkdir -p "$NIGHTSHIFT_DIR"
@@ -26,7 +28,7 @@ curl -fSL -o "$DAEMON_BIN" "$DAEMON_RELEASE_URL"
 chmod +x "$DAEMON_BIN"
 
 echo "--- writing config ---"
-cat > "$NIGHTSHIFT_DIR/config.json" <<EOF
+cat >"$NIGHTSHIFT_DIR/config.json" <<EOF
 {
   "version": 1,
   "serverUrl": "$NIGHTSHIFT_SERVER_URL",
