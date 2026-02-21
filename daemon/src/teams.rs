@@ -224,43 +224,48 @@ pub async fn get_member_diff(
     team_name: &str,
     member_name: &str,
 ) -> Option<MemberDiffDetail> {
-    let data = handle.read().await;
-
-    if let Some(team) = data.active.get(team_name) {
-        if let Some(member) = team.members.get(member_name) {
-            let baseline = member.baseline_commit.as_deref();
-            let cwd = &member.config.cwd;
-            let diff = if let Some(b) = baseline {
-                compute_diff_full(cwd, b).await.unwrap_or_default()
-            } else {
-                String::new()
-            };
-            let current = git_head(cwd).await;
-            return Some(MemberDiffDetail {
-                name: member_name.to_string(),
-                team: team_name.to_string(),
-                cwd: cwd.clone(),
-                baseline_commit: baseline.map(String::from),
-                current_commit: current,
-                diff,
-            });
+    let member_info = {
+        let data = handle.read().await;
+        if let Some(team) = data.active.get(team_name) {
+            team.members.get(member_name).map(|m| {
+                (
+                    m.config.cwd.clone(),
+                    m.baseline_commit.clone(),
+                )
+            })
+        } else if let Some(archive) = data.archived.get(team_name) {
+            if let Some(diff) = archive.member_diffs.get(member_name) {
+                return Some(MemberDiffDetail {
+                    name: member_name.to_string(),
+                    team: team_name.to_string(),
+                    cwd: String::new(),
+                    baseline_commit: None,
+                    current_commit: None,
+                    diff: diff.clone(),
+                });
+            }
+            return None;
+        } else {
+            None
         }
-    }
+    };
 
-    if let Some(archive) = data.archived.get(team_name) {
-        if let Some(diff) = archive.member_diffs.get(member_name) {
-            return Some(MemberDiffDetail {
-                name: member_name.to_string(),
-                team: team_name.to_string(),
-                cwd: String::new(),
-                baseline_commit: None,
-                current_commit: None,
-                diff: diff.clone(),
-            });
-        }
-    }
+    let (cwd, baseline) = member_info?;
+    let diff = if let Some(ref b) = baseline {
+        compute_diff_full(&cwd, b).await.unwrap_or_default()
+    } else {
+        String::new()
+    };
+    let current = git_head(&cwd).await;
 
-    None
+    Some(MemberDiffDetail {
+        name: member_name.to_string(),
+        team: team_name.to_string(),
+        cwd,
+        baseline_commit: baseline,
+        current_commit: current,
+        diff,
+    })
 }
 
 pub async fn get_member_tools(
@@ -268,41 +273,64 @@ pub async fn get_member_tools(
     team_name: &str,
     member_name: &str,
 ) -> Option<MemberToolHistory> {
-    let data = handle.read().await;
-
-    if let Some(team) = data.active.get(team_name) {
-        if let Some(member) = team.members.get(member_name) {
-            let backend = member
-                .config
-                .backend_type
-                .as_deref()
-                .unwrap_or("claude");
-            let calls = read_member_tools(member, backend);
-            let stats = ToolStats::from_calls(&calls);
-            return Some(MemberToolHistory {
-                name: member_name.to_string(),
-                team: team_name.to_string(),
-                backend: backend.to_string(),
-                tool_calls: calls,
-                stats,
-            });
+    let member_info = {
+        let data = handle.read().await;
+        if let Some(team) = data.active.get(team_name) {
+            team.members.get(member_name).map(|m| {
+                let backend = m
+                    .config
+                    .backend_type
+                    .as_deref()
+                    .unwrap_or("claude")
+                    .to_string();
+                let session_path = m.session_path.clone();
+                let opencode_session_id = m.config.opencode_session_id.clone();
+                (backend, session_path, opencode_session_id)
+            })
+        } else if let Some(archive) = data.archived.get(team_name) {
+            if let Some(calls) = archive.member_tools.get(member_name) {
+                let stats = ToolStats::from_calls(calls);
+                return Some(MemberToolHistory {
+                    name: member_name.to_string(),
+                    team: team_name.to_string(),
+                    backend: "archived".to_string(),
+                    tool_calls: calls.clone(),
+                    stats,
+                });
+            }
+            return None;
+        } else {
+            None
         }
-    }
+    };
 
-    if let Some(archive) = data.archived.get(team_name) {
-        if let Some(calls) = archive.member_tools.get(member_name) {
-            let stats = ToolStats::from_calls(calls);
-            return Some(MemberToolHistory {
-                name: member_name.to_string(),
-                team: team_name.to_string(),
-                backend: "archived".to_string(),
-                tool_calls: calls.clone(),
-                stats,
-            });
+    let (backend, session_path, opencode_session_id) = member_info?;
+    let calls = match backend.as_str() {
+        "claude" => {
+            if let Some(ref path) = session_path {
+                crate::toolcalls::read_claude_tools(path)
+            } else {
+                Vec::new()
+            }
         }
-    }
+        "opencode" => {
+            if let Some(ref sid) = opencode_session_id {
+                crate::toolcalls::read_opencode_tools(sid)
+            } else {
+                Vec::new()
+            }
+        }
+        _ => Vec::new(),
+    };
+    let stats = ToolStats::from_calls(&calls);
 
-    None
+    Some(MemberToolHistory {
+        name: member_name.to_string(),
+        team: team_name.to_string(),
+        backend,
+        tool_calls: calls,
+        stats,
+    })
 }
 
 fn read_member_tools(member: &MemberState, backend: &str) -> Vec<ToolCall> {
@@ -624,14 +652,14 @@ async fn compute_diff_summary(cwd: &str, baseline: &str) -> Option<DiffSummary> 
     }
 
     let numstat = tokio::process::Command::new("git")
-        .args(["diff", "--numstat", &format!("{baseline}..HEAD")])
+        .args(["diff", "--numstat", baseline])
         .current_dir(cwd)
         .output()
         .await
         .ok()?;
 
     let name_status = tokio::process::Command::new("git")
-        .args(["diff", "--name-status", &format!("{baseline}..HEAD")])
+        .args(["diff", "--name-status", baseline])
         .current_dir(cwd)
         .output()
         .await
@@ -667,7 +695,7 @@ async fn compute_diff_full(cwd: &str, baseline: &str) -> Option<String> {
         return None;
     }
     let output = tokio::process::Command::new("git")
-        .args(["diff", &format!("{baseline}..HEAD")])
+        .args(["diff", baseline])
         .current_dir(cwd)
         .output()
         .await

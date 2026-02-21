@@ -32,7 +32,7 @@ export interface MemberSummary {
   model: string;
   cwd: string;
   isActive: boolean;
-  color: string;
+  color: string | null;
   diffSummary: DiffSummary | null;
 }
 
