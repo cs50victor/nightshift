@@ -16,6 +16,7 @@ const UPDATE_INTERVAL: Duration = Duration::from_secs(3600);
 const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(60);
 const OPENCODE_CONFIG: &str = include_str!("../opencode.json");
 const PLANNER_PROMPT: &str = include_str!("../planner-system-prompt.txt");
+const TEAM_CONFIG: &str = include_str!("../team_config.txt");
 const OPENCODE_PORT: u16 = 19276;
 const PROXY_PORT: u16 = OPENCODE_PORT + 1;
 const WATCHDOG_SLEEP: Duration = Duration::from_secs(5);
@@ -238,11 +239,27 @@ pub async fn run() -> Result<()> {
     std::fs::write(data_dir.join("opencode.json"), OPENCODE_CONFIG)?;
 
     let prompts_dir = std::path::PathBuf::from(&home).join(".agents/prompts");
+    let agents_dir = std::path::PathBuf::from(&home).join(".agents");
     std::fs::create_dir_all(&prompts_dir)?;
+    std::fs::create_dir_all(&agents_dir)?;
     std::fs::write(
         prompts_dir.join("planner-system-prompt.txt"),
         PLANNER_PROMPT,
     )?;
+
+    let team_config_path = agents_dir.join("team_config.txt");
+    let started_in_data_dir = std::env::current_dir()
+        .ok()
+        .map(|cwd| cwd == data_dir)
+        .unwrap_or(false);
+    if !started_in_data_dir || !team_config_path.exists() {
+        std::fs::write(&team_config_path, TEAM_CONFIG)?;
+    }
+
+    let data_team_config_path = data_dir.join("team_config.txt");
+    if !data_team_config_path.exists() {
+        std::fs::write(&data_team_config_path, TEAM_CONFIG)?;
+    }
 
     if let Ok(bun_install) = std::env::var("BUN_INSTALL") {
         let bun_bin = format!("{bun_install}/bin");

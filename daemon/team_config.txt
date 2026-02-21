@@ -1,0 +1,149 @@
+# Team Configuration
+
+## Model Assignment
+
+### Planning & Discussion
+- Backend: opencode
+- Model: gpt-5.3-codex
+- Use for: Planning, reviewing diffs, architectural discussion
+- Process: Back-and-forth with this teammate until consensus BEFORE executing any task
+
+### Implementation & All Other Tasks
+- Backend: claude
+- Model: opus (claude-opus-4-6)
+- Use for: Code implementation, exploration, testing, all non-planning work
+
+## Communication Protocol
+
+### Polling Behavior
+Do NOT poll inbox forever. If no response after reasonable wait, send a direct message asking the teammate for an update instead of continuing to poll.
+
+## OpenCode Open-Model Guide (Current Whitelist)
+
+Whitelisted models in `opencode` provider:
+- minimax-m2.5
+- glm-5
+- kimi-k2.5
+
+Local scenario suite used in this repo context:
+- Code generation + test-writing with strict format constraints
+- Quantitative reasoning (subscriber + MRR accounting)
+- Policy tradeoff analysis
+- Writing adaptation (board memo vs customer communication)
+- Scientific communication (CRISPR for different audiences)
+- Argument-quality critique and reconstruction
+- Ethics memo with competing frameworks
+
+### Cross-Model Findings (Quality Only)
+
+Instruction fidelity (format + constraints):
+- GLM-5: strongest consistency under tight constraints.
+- Kimi K2.5: generally good, occasional minor drift.
+- MiniMax M2.5: most likely to drift on output format/constraint details.
+
+Reasoning depth:
+- GLM-5: best at structured multi-framework reasoning and explicit caveats.
+- Kimi K2.5: strong practical reasoning, usually concise and coherent.
+- MiniMax M2.5: good first-pass reasoning, but more likely to miss nuance under strict specs.
+
+Writing quality and audience adaptation:
+- GLM-5: most reliable distinction between executive/policy/public voices.
+- Kimi K2.5: clear and readable; slight tendency toward template memo style.
+- MiniMax M2.5: clear prose, but may optimize brevity over precision.
+
+Edge-case reliability:
+- GLM-5: highest requirement-completeness in ambiguous technical prompts.
+- Kimi K2.5: solid baseline, but needs explicit edge-case assertions.
+- MiniMax M2.5: benefits most from explicit acceptance criteria and failure tests.
+
+### 1) opencode/glm-5
+
+Quality profile:
+- Strongest overall model in this whitelist for correctness-critical work.
+- Best performance in structured reasoning, argument critique, and nuanced tradeoff analysis.
+- Most reliable adherence to formatting and instruction constraints.
+
+Observed behaviors from local scenarios:
+- Merge-interval task: strongest interpretation of adjacency semantics.
+- Policy and ethics memos: highest depth and best explicit uncertainty handling.
+- Writing adaptation: good role/tone separation with concrete accountability language.
+
+Failure modes to watch:
+- Can become overly verbose.
+- Can over-structure output if prompt is too open-ended.
+
+Best-use routing:
+- Architecture decisions, root-cause analysis, high-stakes edits.
+- Ambiguous requirements where reasoning quality matters most.
+
+Prompting guidance:
+- Ask for assumptions, counterarguments, and verification checklist.
+- Constrain output length and structure explicitly to avoid verbosity drift.
+
+### 2) opencode/kimi-k2.5
+
+Quality profile:
+- Best all-around balanced model in this set for mixed technical/non-technical tasks.
+- Good clarity and practical framing in communication-heavy outputs.
+- Strong quantitative reliability once constraints are explicit.
+
+Observed behaviors from local scenarios:
+- Quantitative scenario: correct final accounting output.
+- Scientific and policy communication: clear, audience-appropriate explanations.
+- Argument critique: coherent flaw detection and practical policy rewrite.
+
+Failure modes to watch:
+- Can under-spec subtle edge semantics unless prompted directly.
+- Sometimes favors polished structure over deep caveat analysis.
+
+Best-use routing:
+- Broad day-to-day engineering + documentation workflows.
+- Long-context synthesis where consistent readable output is required.
+
+Prompting guidance:
+- Include explicit invariants and negative/counterexample checks.
+- Request an uncertainty section when decisions involve tradeoffs.
+
+### 3) opencode/minimax-m2.5
+
+Quality profile:
+- Good for rapid first drafts and straightforward implementation tasks.
+- Produces readable prose and practical code quickly.
+- More variable than GLM-5/Kimi under strict output constraints.
+
+Observed behaviors from local scenarios:
+- Coding scenario: workable implementation, but weaker strict-constraint adherence.
+- Writing scenario: clear accountability language and trust-preserving tone.
+- Ethics/policy reasoning: useful structure, but less nuanced weighting than GLM-5.
+
+Failure modes to watch:
+- Higher chance of formatting drift (extra blocks/sections).
+- Can "look correct" while missing a requirement subtlety.
+
+Best-use routing:
+- Fast initial drafts before stronger verification pass.
+- Low-ambiguity tasks with explicit acceptance criteria.
+
+Prompting guidance:
+- Force exact output schema and enforce checklist-based self-validation.
+- Require one failing-case demonstration for each critical requirement.
+
+## Recommended Quality Routing
+
+Default quality-first order:
+- GLM-5 first for correctness-critical, ambiguous, or reasoning-heavy tasks.
+- Kimi K2.5 first for balanced general workflows and communication-heavy tasks.
+- MiniMax M2.5 for first-pass drafts, then verify with GLM-5 for sensitive changes.
+
+Verification escalation:
+- If any model output is high impact, run a second-pass verification with GLM-5.
+- Require explicit edge-case checks before accepting final output.
+
+## Benchmark Context (Secondary Signal)
+
+Benchmarks are priors only and should not override observed task performance.
+Use benchmark rank for initial routing, then prioritize:
+- Instruction adherence
+- Requirement completeness
+- Error detection quality
+- Clarity under audience-specific writing constraints
