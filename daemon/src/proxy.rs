@@ -25,13 +25,6 @@ fn json_response(status: StatusCode, body: String) -> Response<ProxyBody> {
         .unwrap()
 }
 
-fn internal_error_response(msg: &str) -> Response<ProxyBody> {
-    json_response(
-        StatusCode::INTERNAL_SERVER_ERROR,
-        format!(r#"{{"error":"{}"}}"#, msg.replace('"', "\\\"")),
-    )
-}
-
 fn parse_team_member_path<'a>(path: &'a str, suffix: &str) -> Option<(&'a str, &'a str)> {
     // /teams/{team}/members/{name}/{suffix}
     let path = path.strip_prefix("/teams/")?;
@@ -58,13 +51,17 @@ async fn handle(
     {
         return Ok(
             match crate::openapi::merged_openapi_spec(opencode_port, proxy_port).await {
-                Ok(spec) => json_response(
-                    StatusCode::OK,
-                    serde_json::to_string(&spec).unwrap_or_else(|_| "{}".into()),
-                ),
+                Ok(spec) => json_response(StatusCode::OK, spec),
                 Err(e) => {
-                    tracing::warn!("failed to build merged openapi spec: {e}");
-                    internal_error_response("failed to build openapi spec")
+                    tracing::warn!("failed to build merged openapi spec: {e:#}");
+                    json_response(
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        serde_json::json!({
+                            "error": "failed to build openapi spec",
+                            "detail": format!("{e:#}")
+                        })
+                        .to_string(),
+                    )
                 }
             },
         );
