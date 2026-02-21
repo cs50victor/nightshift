@@ -1,4 +1,5 @@
 use anyhow::Result;
+use std::sync::Arc;
 #[cfg(unix)]
 use std::os::unix::process::CommandExt;
 use std::time::Duration;
@@ -15,6 +16,7 @@ static RESTARTING: AtomicBool = AtomicBool::new(false);
 const UPDATE_INTERVAL: Duration = Duration::from_secs(3600);
 const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(60);
 const OPENCODE_CONFIG: &str = include_str!("../opencode.json");
+const CLAUDE_TEAMS_MCP_SCRIPT: &str = include_str!("../claude_teams_mcp.py");
 const PLANNER_PROMPT: &str = include_str!("../planner-system-prompt.txt");
 const TEAM_CONFIG: &str = include_str!("../team_config.txt");
 const OPENCODE_PORT: u16 = 19276;
@@ -23,6 +25,10 @@ const WATCHDOG_SLEEP: Duration = Duration::from_secs(5);
 const WATCHDOG_THRESHOLD: Duration = Duration::from_secs(5);
 const OPENCODE_PID_FILE: &str = "opencode.pid";
 const READINESS_TIMEOUT: Duration = Duration::from_secs(8);
+const CLAUDE_TEAMS_SCRIPT_PLACEHOLDER: &str = "__NIGHTSHIFT_CLAUDE_TEAMS_SCRIPT__";
+const CLAUDE_TEAMS_SRC_PLACEHOLDER: &str = "__NIGHTSHIFT_CLAUDE_TEAMS_SRC__";
+const DEFAULT_CLAUDE_TEAMS_SRC: &str =
+    concat!(env!("CARGO_MANIFEST_DIR"), "/../../claude-code-teams-mcp/src");
 
 #[cfg(unix)]
 fn kill_stale_opencode(pid_path: &std::path::Path) {
@@ -236,7 +242,35 @@ pub async fn run() -> Result<()> {
     let home = std::env::var("HOME").unwrap_or_else(|_| ".".into());
     let data_dir = std::path::PathBuf::from(&home).join(".nightshift");
     std::fs::create_dir_all(&data_dir)?;
-    std::fs::write(data_dir.join("opencode.json"), OPENCODE_CONFIG)?;
+
+    let scripts_dir = data_dir.join("scripts");
+    std::fs::create_dir_all(&scripts_dir)?;
+    let claude_teams_script_path = scripts_dir.join("claude_teams_mcp.py");
+    let claude_teams_src =
+        std::env::var("NIGHTSHIFT_CLAUDE_TEAMS_SRC").unwrap_or_else(|_| DEFAULT_CLAUDE_TEAMS_SRC.to_string());
+    if !std::path::Path::new(&claude_teams_src).exists() {
+        tracing::warn!(
+            "NIGHTSHIFT_CLAUDE_TEAMS_SRC does not exist: {}",
+            claude_teams_src
+        );
+    }
+    let rendered_mcp_script =
+        CLAUDE_TEAMS_MCP_SCRIPT.replace(CLAUDE_TEAMS_SRC_PLACEHOLDER, &claude_teams_src);
+    std::fs::write(&claude_teams_script_path, rendered_mcp_script)?;
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = std::fs::metadata(&claude_teams_script_path)?.permissions();
+        perms.set_mode(0o755);
+        std::fs::set_permissions(&claude_teams_script_path, perms)?;
+    }
+
+    let rendered_opencode_config = OPENCODE_CONFIG.replace(
+        CLAUDE_TEAMS_SCRIPT_PLACEHOLDER,
+        &claude_teams_script_path.to_string_lossy(),
+    );
+    std::fs::write(data_dir.join("opencode.json"), rendered_opencode_config)?;
 
     let prompts_dir = std::path::PathBuf::from(&home).join(".agents/prompts");
     let agents_dir = std::path::PathBuf::from(&home).join(".agents");
@@ -365,8 +399,13 @@ pub async fn run() -> Result<()> {
     // also stop firing. OS thread uses nanosleep/futex, which resumes regardless.
     spawn_watchdog(child_pid);
 
-    let teams_handle = crate::teams::new_handle();
-    tokio::spawn(crate::teams::spawn_watcher(teams_handle.clone()));
+    let teams_db_path = std::env::var("NIGHTSHIFT_TEAMS_DB_PATH")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|_| data_dir.join("teams.db"));
+    let db_pool = crate::db::open(&teams_db_path).await?;
+    crate::db::reconcile_on_boot(&db_pool).await?;
+    crate::db::retention_cleanup(&db_pool).await?;
+    let db_pool = Arc::new(db_pool);
 
     let start_time = std::time::Instant::now();
 
@@ -381,7 +420,7 @@ pub async fn run() -> Result<()> {
             tracing::error!("opencode exited: {:?}, daemon will exit", status);
             std::process::exit(1);
         }
-        result = crate::proxy::serve(OPENCODE_PORT, proxy_port, data_dir.to_string_lossy().into_owned(), start_time, teams_handle.clone()) => {
+        result = crate::proxy::serve(OPENCODE_PORT, proxy_port, data_dir.to_string_lossy().into_owned(), start_time, db_pool.clone()) => {
             tracing::error!("proxy server failed: {:?}", result);
             child.kill().await.ok();
             std::process::exit(1);

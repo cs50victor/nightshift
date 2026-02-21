@@ -1,9 +1,11 @@
 mod config;
+mod db;
 mod daemon;
+mod diff;
 mod nodes;
 mod openapi;
 mod proxy;
-mod teams;
+mod teams_repo;
 mod toolcalls;
 mod update;
 

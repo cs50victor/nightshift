@@ -3,18 +3,17 @@ use axum::body::Body;
 use axum::extract::{Path, Request, State};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
-use axum::routing::{any, get};
+use axum::routing::{any, get, post};
 use axum::{Json, Router};
 use hyper::body::Incoming;
 use hyper_util::rt::TokioIo;
+use sqlx::SqlitePool;
 use serde_json::json;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::net::{TcpListener, TcpStream};
 use utoipa::ToSchema;
 use utoipa_axum::{router::OpenApiRouter, routes};
-
-use crate::teams::TeamsHandle;
 
 const STARTUP_RETRY_WINDOW: Duration = Duration::from_secs(8);
 const STARTUP_MAX_RETRIES: u32 = 5;
@@ -27,7 +26,7 @@ struct AppState {
     project_path: Arc<str>,
     daemon_openapi_json: Arc<str>,
     start_time: std::time::Instant,
-    teams: TeamsHandle,
+    db: Arc<SqlitePool>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, ToSchema)]
@@ -66,10 +65,16 @@ async fn get_project_absolute_path(State(state): State<AppState>) -> impl IntoRe
     get,
     path = "/teams",
     operation_id = "daemon.teams.list",
-    responses((status = 200, description = "Team summaries", body = [crate::teams::TeamSummary]))
+    responses((status = 200, description = "Team summaries", body = [crate::teams_repo::TeamSummary]))
 )]
-async fn get_teams(State(state): State<AppState>) -> impl IntoResponse {
-    Json(crate::teams::get_teams_summary(&state.teams).await)
+async fn get_teams(State(state): State<AppState>) -> Response {
+    match crate::teams_repo::list_teams(&state.db).await {
+        Ok(teams) => Json(teams).into_response(),
+        Err(e) => json_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            json!({"error": format!("{e:#}")}).to_string(),
+        ),
+    }
 }
 
 #[utoipa::path(
@@ -81,7 +86,7 @@ async fn get_teams(State(state): State<AppState>) -> impl IntoResponse {
         ("name" = String, Path, description = "Member name")
     ),
     responses(
-        (status = 200, description = "Member diff", body = crate::teams::MemberDiffDetail),
+        (status = 200, description = "Member diff", body = crate::diff::MemberDiffDetail),
         (status = 404, description = "Not found", body = NightshiftErrorResponse)
     )
 )]
@@ -89,9 +94,28 @@ async fn get_member_diff(
     State(state): State<AppState>,
     Path((team, name)): Path<(String, String)>,
 ) -> Response {
-    match crate::teams::get_member_diff(&state.teams, &team, &name).await {
-        Some(diff) => Json(diff).into_response(),
-        None => json_response(StatusCode::NOT_FOUND, r#"{"error":"not found"}"#.into()),
+    match crate::teams_repo::get_member_diff_cwd(&state.db, &team, &name).await {
+        Ok(Some((cwd, baseline))) => {
+            let diff = if let Some(ref b) = baseline {
+                crate::diff::compute_diff_full(&cwd, b).await.unwrap_or_default()
+            } else {
+                String::new()
+            };
+            let detail = crate::diff::MemberDiffDetail {
+                name,
+                team,
+                cwd: cwd.clone(),
+                baseline_commit: baseline,
+                current_commit: crate::diff::git_head(&cwd).await,
+                diff,
+            };
+            Json(detail).into_response()
+        }
+        Ok(None) => json_response(StatusCode::NOT_FOUND, r#"{"error":"not found"}"#.into()),
+        Err(e) => json_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            json!({"error": format!("{e:#}")}).to_string(),
+        ),
     }
 }
 
@@ -112,9 +136,163 @@ async fn get_member_tools(
     State(state): State<AppState>,
     Path((team, name)): Path<(String, String)>,
 ) -> Response {
-    match crate::teams::get_member_tools(&state.teams, &team, &name).await {
-        Some(tools) => Json(tools).into_response(),
-        None => json_response(StatusCode::NOT_FOUND, r#"{"error":"not found"}"#.into()),
+    match crate::teams_repo::get_member_tools(&state.db, &team, &name).await {
+        Ok(Some(tools)) => Json(tools).into_response(),
+        Ok(None) => json_response(StatusCode::NOT_FOUND, r#"{"error":"not found"}"#.into()),
+        Err(e) => json_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            json!({"error": format!("{e:#}")}).to_string(),
+        ),
+    }
+}
+
+async fn create_team(
+    State(state): State<AppState>,
+    Json(req): Json<crate::teams_repo::CreateTeamRequest>,
+) -> Response {
+    match crate::teams_repo::create_team(&state.db, req).await {
+        Ok(resp) => Json(resp).into_response(),
+        Err(e) => json_response(
+            StatusCode::BAD_REQUEST,
+            json!({"error": format!("{e:#}")}).to_string(),
+        ),
+    }
+}
+
+async fn delete_team(
+    State(state): State<AppState>,
+    Json(req): Json<crate::teams_repo::DeleteTeamRequest>,
+) -> Response {
+    match crate::teams_repo::delete_team(&state.db, req).await {
+        Ok(resp) => Json(resp).into_response(),
+        Err(e) => json_response(
+            StatusCode::BAD_REQUEST,
+            json!({"error": format!("{e:#}")}).to_string(),
+        ),
+    }
+}
+
+async fn spawn_teammate(
+    State(state): State<AppState>,
+    Json(req): Json<crate::teams_repo::SpawnTeammateRequest>,
+) -> Response {
+    match crate::teams_repo::spawn_teammate(&state.db, req).await {
+        Ok(resp) => Json(resp).into_response(),
+        Err(e) => json_response(
+            StatusCode::BAD_REQUEST,
+            json!({"error": format!("{e:#}")}).to_string(),
+        ),
+    }
+}
+
+async fn kill_teammate(
+    State(state): State<AppState>,
+    Json(req): Json<crate::teams_repo::KillTeammateRequest>,
+) -> Response {
+    match crate::teams_repo::kill_teammate(&state.db, req).await {
+        Ok(resp) => Json(resp).into_response(),
+        Err(e) => json_response(
+            StatusCode::BAD_REQUEST,
+            json!({"error": format!("{e:#}")}).to_string(),
+        ),
+    }
+}
+
+async fn create_task(
+    State(state): State<AppState>,
+    Json(req): Json<crate::teams_repo::CreateTaskRequest>,
+) -> Response {
+    match crate::teams_repo::create_task(&state.db, req).await {
+        Ok(resp) => Json(resp).into_response(),
+        Err(e) => json_response(
+            StatusCode::BAD_REQUEST,
+            json!({"error": format!("{e:#}")}).to_string(),
+        ),
+    }
+}
+
+async fn update_task(
+    State(state): State<AppState>,
+    Json(req): Json<crate::teams_repo::UpdateTaskRequest>,
+) -> Response {
+    match crate::teams_repo::update_task(&state.db, req).await {
+        Ok(resp) => Json(resp).into_response(),
+        Err(e) => json_response(
+            StatusCode::BAD_REQUEST,
+            json!({"error": format!("{e:#}")}).to_string(),
+        ),
+    }
+}
+
+async fn send_message(
+    State(state): State<AppState>,
+    Json(req): Json<crate::teams_repo::SendMessageRequest>,
+) -> Response {
+    match crate::teams_repo::send_message(&state.db, req).await {
+        Ok(resp) => Json(resp).into_response(),
+        Err(e) => json_response(
+            StatusCode::BAD_REQUEST,
+            json!({"error": format!("{e:#}")}).to_string(),
+        ),
+    }
+}
+
+async fn read_inbox(
+    State(state): State<AppState>,
+    Json(req): Json<crate::teams_repo::ReadInboxRequest>,
+) -> Response {
+    match crate::teams_repo::mark_read(&state.db, req).await {
+        Ok(resp) => Json(resp).into_response(),
+        Err(e) => json_response(
+            StatusCode::BAD_REQUEST,
+            json!({"error": format!("{e:#}")}).to_string(),
+        ),
+    }
+}
+
+async fn get_team_snapshot(
+    State(state): State<AppState>,
+    Path(team): Path<String>,
+) -> Response {
+    match crate::teams_repo::get_team_snapshot(&state.db, &team).await {
+        Ok(Some(snapshot)) => Json(snapshot).into_response(),
+        Ok(None) => json_response(StatusCode::NOT_FOUND, r#"{"error":"not found"}"#.into()),
+        Err(e) => json_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            json!({"error": format!("{e:#}")}).to_string(),
+        ),
+    }
+}
+
+async fn get_activity(
+    State(state): State<AppState>,
+    Path(team): Path<String>,
+    axum::extract::Query(params): axum::extract::Query<std::collections::HashMap<String, String>>,
+) -> Response {
+    let since_ms = params.get("since_ms").and_then(|v| v.parse::<u64>().ok());
+    let limit = params.get("limit").and_then(|v| v.parse::<u32>().ok());
+    match crate::teams_repo::get_activity(&state.db, &team, since_ms, limit).await {
+        Ok(rows) => Json(rows).into_response(),
+        Err(e) => json_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            json!({"error": format!("{e:#}")}).to_string(),
+        ),
+    }
+}
+
+async fn get_member_timeline(
+    State(state): State<AppState>,
+    Path((team, name)): Path<(String, String)>,
+    axum::extract::Query(params): axum::extract::Query<std::collections::HashMap<String, String>>,
+) -> Response {
+    let since_ms = params.get("since_ms").and_then(|v| v.parse::<u64>().ok());
+    let limit = params.get("limit").and_then(|v| v.parse::<u32>().ok());
+    match crate::teams_repo::get_member_timeline(&state.db, &team, &name, since_ms, limit).await {
+        Ok(rows) => Json(rows).into_response(),
+        Err(e) => json_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            json!({"error": format!("{e:#}")}).to_string(),
+        ),
     }
 }
 
@@ -237,6 +415,17 @@ fn api_router() -> Router<AppState> {
     documented_router
         .route("/doc", get(get_openapi_spec))
         .route("/openapi.json", get(get_openapi_spec))
+        .route("/teams/{team}/snapshot", get(get_team_snapshot))
+        .route("/teams/{team}/activity", get(get_activity))
+        .route("/teams/{team}/members/{name}/timeline", get(get_member_timeline))
+        .route("/internal/teams/create", post(create_team))
+        .route("/internal/teams/delete", post(delete_team))
+        .route("/internal/teammates/spawn", post(spawn_teammate))
+        .route("/internal/teammates/kill", post(kill_teammate))
+        .route("/internal/tasks/create", post(create_task))
+        .route("/internal/tasks/update", post(update_task))
+        .route("/internal/messages/send", post(send_message))
+        .route("/internal/inbox/read", post(read_inbox))
         .fallback(any(proxy_fallback))
 }
 
@@ -257,7 +446,7 @@ pub async fn serve(
     listen_port: u16,
     project_path: String,
     start_time: std::time::Instant,
-    teams: TeamsHandle,
+    db: Arc<SqlitePool>,
 ) -> Result<()> {
     let listener = TcpListener::bind(("0.0.0.0", listen_port))
         .await
@@ -273,7 +462,7 @@ pub async fn serve(
         project_path: Arc::<str>::from(project_path),
         daemon_openapi_json: Arc::<str>::from(daemon_openapi_json),
         start_time,
-        teams,
+        db,
     });
 
     axum::serve(listener, app)
