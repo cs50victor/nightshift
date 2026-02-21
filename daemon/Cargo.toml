@@ -12,9 +12,9 @@ path = "tests/bin/fake_opencode.rs"
 clap = { version = "4", features = ["derive"] }
 tokio = { version = "1", features = ["full"] }
 self_update = { version = "0.42", default-features = false, features = ["archive-tar", "archive-zip", "compression-flate2", "rustls"] }
-hyper = { version = "1", features = ["http1", "server", "client"] }
+axum = { version = "0.8", features = ["http1", "json", "tokio"] }
+hyper = { version = "1", features = ["http1", "client"] }
 hyper-util = { version = "0.1", features = ["tokio"] }
-http-body-util = "0.1"
 bytes = "1"
 anyhow = "1"
 tracing = "0.1"
@@ -25,6 +25,7 @@ serde_json = "1"
 time = { version = "0.3", features = ["formatting", "parsing"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 utoipa = { version = "5", features = ["macros"] }
+utoipa-axum = "0.2"
 oas3 = "0.20"
 # NOTE(victor): Do NOT use macos_kqueue feature. kqueue watches file descriptors
 # (inodes), not paths. Atomic saves (write temp + rename) make the watch stale

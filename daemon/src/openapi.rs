@@ -2,104 +2,8 @@ use anyhow::{anyhow, Context, Result};
 use oas3::spec::{
     Components, ObjectOrReference, Operation, Parameter, ParameterIn, PathItem, Server, Spec,
 };
-use serde::{Deserialize, Serialize};
-use utoipa::OpenApi;
 
 const OPENCODE_OPENAPI_PATH: &str = "/doc";
-
-#[derive(Serialize, Deserialize, utoipa::ToSchema)]
-#[serde(rename_all = "camelCase")]
-struct NightshiftProjectPathResponse {
-    path: String,
-}
-
-#[derive(Serialize, Deserialize, utoipa::ToSchema)]
-#[serde(rename_all = "camelCase")]
-struct NightshiftErrorResponse {
-    error: String,
-}
-
-#[utoipa::path(
-    get,
-    path = "/project/absolute_path",
-    operation_id = "daemon.project.absolutePath",
-    responses((status = 200, description = "Project path", body = NightshiftProjectPathResponse))
-)]
-#[allow(dead_code)]
-fn project_absolute_path_route() {}
-
-#[utoipa::path(
-    get,
-    path = "/teams",
-    operation_id = "daemon.teams.list",
-    responses((status = 200, description = "Team summaries", body = [crate::teams::TeamSummary]))
-)]
-#[allow(dead_code)]
-fn teams_route() {}
-
-#[utoipa::path(
-    get,
-    path = "/teams/{team}/members/{name}/diff",
-    operation_id = "daemon.teams.member.diff",
-    params(
-        ("team" = String, Path, description = "Team name"),
-        ("name" = String, Path, description = "Member name")
-    ),
-    responses(
-        (status = 200, description = "Member diff", body = crate::teams::MemberDiffDetail),
-        (status = 404, description = "Not found", body = NightshiftErrorResponse)
-    )
-)]
-#[allow(dead_code)]
-fn member_diff_route() {}
-
-#[utoipa::path(
-    get,
-    path = "/teams/{team}/members/{name}/tools",
-    operation_id = "daemon.teams.member.tools",
-    params(
-        ("team" = String, Path, description = "Team name"),
-        ("name" = String, Path, description = "Member name")
-    ),
-    responses(
-        (status = 200, description = "Member tool history", body = crate::toolcalls::MemberToolHistory),
-        (status = 404, description = "Not found", body = NightshiftErrorResponse)
-    )
-)]
-#[allow(dead_code)]
-fn member_tools_route() {}
-
-#[derive(OpenApi)]
-#[openapi(
-    paths(
-        project_absolute_path_route,
-        teams_route,
-        member_diff_route,
-        member_tools_route
-    ),
-    components(schemas(
-        NightshiftProjectPathResponse,
-        NightshiftErrorResponse,
-        crate::teams::TeamSummary,
-        crate::teams::MemberSummary,
-        crate::teams::DiffSummary,
-        crate::teams::FileStat,
-        crate::teams::TaskSummary,
-        crate::teams::ConflictInfo,
-        crate::teams::MemberDiffDetail,
-        crate::toolcalls::MemberToolHistory,
-        crate::toolcalls::ToolCall,
-        crate::toolcalls::ToolStats
-    ))
-)]
-struct DaemonApi;
-
-fn daemon_openapi() -> Result<Spec> {
-    let daemon_json = DaemonApi::openapi()
-        .to_json()
-        .context("failed to serialize daemon openapi")?;
-    oas3::from_json(&daemon_json).context("failed to parse daemon openapi as oas3")
-}
 
 fn merge_components(into: &mut Components, from: Components) {
     into.schemas.extend(from.schemas);
@@ -193,7 +97,11 @@ fn normalize_upstream_spec(spec: &mut Spec) {
     }
 }
 
-pub async fn merged_openapi_spec(opencode_port: u16, proxy_port: u16) -> Result<String> {
+pub async fn merged_openapi_spec(
+    opencode_port: u16,
+    proxy_port: u16,
+    daemon_openapi_json: &str,
+) -> Result<String> {
     let upstream_url = format!("http://127.0.0.1:{opencode_port}{OPENCODE_OPENAPI_PATH}");
     let upstream_raw = reqwest::get(&upstream_url)
         .await
@@ -209,8 +117,12 @@ pub async fn merged_openapi_spec(opencode_port: u16, proxy_port: u16) -> Result<
         anyhow!("failed to parse upstream openapi json: {e}; body_prefix={prefix:?}")
     })?;
 
+    let daemon_spec: Spec = oas3::from_json(daemon_openapi_json).map_err(|e| {
+        let prefix: String = daemon_openapi_json.chars().take(220).collect();
+        anyhow!("failed to parse daemon openapi json: {e}; body_prefix={prefix:?}")
+    })?;
+
     normalize_upstream_spec(&mut upstream_spec);
-    let daemon = daemon_openapi()?;
-    let merged = merge_openapi(upstream_spec, daemon, proxy_port);
+    let merged = merge_openapi(upstream_spec, daemon_spec, proxy_port);
     serde_json::to_string(&merged).context("failed to serialize merged openapi")
 }
