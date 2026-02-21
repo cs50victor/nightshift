@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowUp, FileText, ImageIcon, Plus, X } from "lucide-react";
+import { ArrowUp, FileText, ImageIcon, Film, FileAudio, FileIcon, Plus, X } from "lucide-react";
 import { useRef, useState } from "react";
 import { AgentSelect } from "@/components/agent-select";
 import {
@@ -12,11 +12,29 @@ import { Button, buttonStyles } from "@/components/ui/button";
 import { Menu, MenuContent, MenuItem, MenuTrigger } from "@/components/ui/menu";
 import { Textarea } from "@/components/ui/textarea";
 
+const MEDIA_PREFIXES = ["image/", "video/", "audio/", "application/pdf"];
+function isMediaFile(mime: string): boolean {
+  return MEDIA_PREFIXES.some((p) => mime.startsWith(p));
+}
+
+function attachmentIcon(mime: string) {
+  if (mime.startsWith("video/")) return <Film className="size-6 text-muted-fg" />;
+  if (mime.startsWith("audio/")) return <FileAudio className="size-6 text-muted-fg" />;
+  if (mime === "application/pdf") return <FileIcon className="size-6 text-muted-fg" />;
+  return null;
+}
+
+export interface Attachment {
+  dataUrl: string;
+  filename: string;
+  mime: string;
+}
+
 interface ChatInputProps {
   sessionId: string;
   input: string;
   onInputChange: (value: string) => void;
-  onSubmit: (e: React.FormEvent) => void;
+  onSubmit: (e: React.FormEvent, attachments?: Attachment[]) => void;
   sending: boolean;
 }
 
@@ -34,31 +52,64 @@ export function ChatInput({
   const [fileResults, setFileResults] = useState<string[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
-  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const imageInputRef = useRef<HTMLInputElement>(null);
+  const mediaInputRef = useRef<HTMLInputElement>(null);
+
+  const readFileAsDataUrl = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      setAttachments((prev) => [
+        ...prev,
+        {
+          dataUrl: reader.result as string,
+          filename: file.name || "pasted-file",
+          mime: file.type || "application/octet-stream",
+        },
+      ]);
+    };
+    reader.readAsDataURL(file);
+  };
 
   const handleFileUpload = (
     e: React.ChangeEvent<HTMLInputElement>,
-    type: "file" | "image",
+    type: "file" | "media",
   ) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (type === "image") {
-      setUploadedImage(URL.createObjectURL(file));
-      setUploadedFileName(file.name);
+    const files = e.target.files;
+    if (!files?.length) return;
+    if (type === "media") {
+      for (const file of Array.from(files)) {
+        readFileAsDataUrl(file);
+      }
     } else {
-      const newValue =
-        input + (input.endsWith(" ") ? "" : " ") + `@${file.name} `;
-      onInputChange(newValue);
+      for (const file of Array.from(files)) {
+        if (isMediaFile(file.type)) {
+          readFileAsDataUrl(file);
+        } else {
+          const newValue =
+            input + (input.endsWith(" ") ? "" : " ") + `@${file.name} `;
+          onInputChange(newValue);
+        }
+      }
     }
     e.target.value = "";
   };
 
-  const handleImageRemove = () => {
-    setUploadedImage(null);
-    setUploadedFileName(null);
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const item of Array.from(items)) {
+      if (isMediaFile(item.type)) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (file) readFileAsDataUrl(file);
+        return;
+      }
+    }
+  };
+
+  const removeAttachment = (index: number) => {
+    setAttachments((prev) => prev.filter((_, i) => i !== index));
   };
 
   return (
@@ -81,18 +132,26 @@ export function ChatInput({
       <input
         ref={fileInputRef}
         type="file"
+        multiple
         className="hidden"
         onChange={(e) => handleFileUpload(e, "file")}
       />
       <input
-        ref={imageInputRef}
+        ref={mediaInputRef}
         type="file"
-        accept="image/*"
+        multiple
+        accept="image/*,video/*,audio/*,application/pdf"
         className="hidden"
-        onChange={(e) => handleFileUpload(e, "image")}
+        onChange={(e) => handleFileUpload(e, "media")}
       />
 
-      <form onSubmit={onSubmit}>
+      <form onSubmit={(e) => {
+        e.preventDefault();
+        if (!input.trim() && attachments.length === 0) return;
+        const submitted = attachments.length > 0 ? [...attachments] : undefined;
+        setAttachments([]);
+        onSubmit(e, submitted);
+      }}>
         <div className="rounded-2xl border border-border bg-muted/40 overflow-hidden">
           <div className="p-3">
             <Textarea
@@ -121,6 +180,7 @@ export function ChatInput({
                   fileMention.handleInputChange(input, cursorPos);
                 }
               }}
+              onPaste={handlePaste}
               onKeyDown={(e) => {
                 const handled = fileMention.handleKeyDown(
                   e,
@@ -144,8 +204,10 @@ export function ChatInput({
                 }
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
-                  if (input.trim()) {
-                    onSubmit(e as unknown as React.FormEvent);
+                  if (input.trim() || attachments.length > 0) {
+                    const submitted = attachments.length > 0 ? [...attachments] : undefined;
+                    setAttachments([]);
+                    onSubmit(e as unknown as React.FormEvent, submitted);
                   }
                 }
               }}
@@ -155,23 +217,34 @@ export function ChatInput({
             />
           </div>
 
-          {uploadedImage && (
-            <div className="px-3 pb-2">
-              <div className="relative inline-block">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={uploadedImage}
-                  alt={uploadedFileName ?? "uploaded"}
-                  className="h-16 w-16 rounded-lg object-cover border border-border"
-                />
-                <button
-                  type="button"
-                  onClick={handleImageRemove}
-                  className="absolute -top-1.5 -right-1.5 rounded-full bg-fg text-bg p-0.5 cursor-pointer"
-                >
-                  <X className="size-3" />
-                </button>
-              </div>
+          {attachments.length > 0 && (
+            <div className="px-3 pb-2 flex flex-wrap gap-2">
+              {attachments.map((att, i) => (
+                <div key={`${att.filename}-${i}`} className="relative inline-block">
+                  {att.mime.startsWith("image/") ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={att.dataUrl}
+                      alt={att.filename}
+                      className="h-16 w-16 rounded-lg object-cover border border-border"
+                    />
+                  ) : (
+                    <div className="h-16 w-16 rounded-lg border border-border flex flex-col items-center justify-center bg-muted gap-1">
+                      {attachmentIcon(att.mime)}
+                      <span className="text-[9px] text-muted-fg truncate max-w-14 px-0.5">
+                        {att.filename.split(".").pop()}
+                      </span>
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => removeAttachment(i)}
+                    className="absolute -top-1.5 -right-1.5 rounded-full bg-fg text-bg p-0.5 cursor-pointer"
+                  >
+                    <X className="size-3" />
+                  </button>
+                </div>
+              ))}
             </div>
           )}
 
@@ -190,9 +263,9 @@ export function ChatInput({
                 </div>
               </MenuTrigger>
               <MenuContent placement="top">
-                <MenuItem onAction={() => imageInputRef.current?.click()}>
+                <MenuItem onAction={() => mediaInputRef.current?.click()}>
                   <ImageIcon data-slot="icon" className="size-4" />
-                  Upload Image
+                  Upload Media
                 </MenuItem>
                 <MenuItem onAction={() => fileInputRef.current?.click()}>
                   <FileText data-slot="icon" className="size-4" />
@@ -213,7 +286,7 @@ export function ChatInput({
               type="submit"
               intent="secondary"
               size="sq-sm"
-              isDisabled={(!input.trim() && !uploadedImage) || sending}
+              isDisabled={(!input.trim() && attachments.length === 0) || sending}
               className="rounded-full"
             >
               <ArrowUp data-slot="icon" className="size-4" />

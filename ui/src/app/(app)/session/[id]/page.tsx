@@ -5,7 +5,7 @@ import {
 } from "@heroicons/react/24/solid";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChatInput } from "@/components/chat-input";
+import { type Attachment, ChatInput } from "@/components/chat-input";
 import { PartRenderer } from "@/components/parts";
 import { PermissionDialog } from "@/components/permission-dialog";
 import { QuestionDialog } from "@/components/question-dialog";
@@ -23,6 +23,7 @@ import { useSessionStore } from "@/stores/session-store";
 interface QueuedMessage {
   id: string;
   text: string;
+  attachments?: Attachment[];
 }
 
 const VISIBLE_PART_TYPES = new Set([
@@ -144,13 +145,14 @@ export default function SessionPage() {
   }, [sessionId]);
 
   const sendMessage = useCallback(
-    async (messageText: string, messageId: string) => {
+    async (messageText: string, messageId: string, attachments?: Attachment[]) => {
       if (!sessionId) return;
       try {
         await useMessageStore.getState().sendMessage(sessionId, {
           text: messageText,
           model: selectedModel,
           agent: selectedAgent,
+          attachments,
         });
         useMessageStore
           .getState()
@@ -173,25 +175,25 @@ export default function SessionPage() {
 
     while (messageQueueRef.current.length > 0) {
       const next = messageQueueRef.current.shift()!;
-      await sendMessage(next.text, next.id);
+      await sendMessage(next.text, next.id, next.attachments);
     }
 
     isProcessingQueue.current = false;
     setSending(false);
   }, [sessionId, sendMessage]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent, attachments?: Attachment[]) => {
     e.preventDefault();
-    if (!input.trim() || !sessionId) return;
-
     const messageText = input.trim();
+    if ((!messageText && !attachments?.length) || !sessionId) return;
+
     setInput("");
     setError(null);
 
     const messageId = useMessageStore
       .getState()
-      .addOptimisticMessage(sessionId, messageText);
-    messageQueueRef.current.push({ id: messageId, text: messageText });
+      .addOptimisticMessage(sessionId, messageText || `[${attachments!.length} attachment(s)]`);
+    messageQueueRef.current.push({ id: messageId, text: messageText, attachments });
     processQueue();
 
     isNearBottomRef.current = true;

@@ -36,7 +36,7 @@
         "textVerbosity": "medium",
         "include": ["reasoning.encrypted_content"]
       },
-      "whitelist": ["gpt-5.2-codex", "gpt-5.3-codex"],
+      "whitelist": ["gpt-5.2-codex", "gpt-5.3-codex", "gpt-5.3-codex-spark"],
       "models": {
         "gpt-5.2-codex": {
           "options": {

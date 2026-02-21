@@ -21,6 +21,7 @@ interface MessageState {
       text: string;
       model: { providerID: string; modelID: string };
       agent?: string;
+      attachments?: { dataUrl: string; filename: string; mime: string }[];
     },
   ) => Promise<void>;
 
@@ -58,9 +59,21 @@ export const useMessageStore = create<MessageState>((set) => ({
     }));
   },
 
-  sendMessage: async (sessionID, { text, model, agent }) => {
+  sendMessage: async (sessionID, { text, model, agent, attachments }) => {
+    const parts: Record<string, string>[] = [];
+    if (text) parts.push({ type: "text", text });
+    if (attachments) {
+      for (const att of attachments) {
+        parts.push({
+          type: "file",
+          filename: att.filename,
+          mime: att.mime,
+          url: att.dataUrl,
+        });
+      }
+    }
     await api.post(`/session/${sessionID}/prompt_async`, {
-      parts: [{ type: "text", text }],
+      parts,
       model,
       agent,
     });
