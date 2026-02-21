@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::sync::RwLock;
+use utoipa::ToSchema;
 
 const TEAMS_POLL_INTERVAL: std::time::Duration = std::time::Duration::from_secs(30);
 const DIFF_REFRESH_INTERVAL: std::time::Duration = std::time::Duration::from_secs(5);
@@ -126,7 +127,7 @@ struct TeamArchive {
 
 // --- API response types ---
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct TeamSummary {
     pub name: String,
@@ -138,7 +139,7 @@ pub struct TeamSummary {
     pub conflicts: Vec<ConflictInfo>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct MemberSummary {
     pub name: String,
@@ -150,7 +151,7 @@ pub struct MemberSummary {
     pub diff_summary: Option<DiffSummary>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct DiffSummary {
     pub files_changed: u32,
@@ -159,7 +160,7 @@ pub struct DiffSummary {
     pub files: Vec<FileStat>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct FileStat {
     pub path: String,
@@ -168,7 +169,7 @@ pub struct FileStat {
     pub status: String,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct TaskSummary {
     pub id: String,
@@ -177,14 +178,14 @@ pub struct TaskSummary {
     pub owner: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ConflictInfo {
     pub path: String,
     pub members: Vec<String>,
 }
 
-#[derive(Serialize, Debug, Clone)]
+#[derive(Serialize, Debug, Clone, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct MemberDiffDetail {
     pub name: String,

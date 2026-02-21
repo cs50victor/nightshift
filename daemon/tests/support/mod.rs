@@ -29,6 +29,22 @@ impl TestHome {
     }
 }
 
+pub fn write_test_config(home: &TestHome, proxy_port: u16) {
+    let dir = home.nightshift_dir();
+    std::fs::create_dir_all(&dir).expect("create .nightshift dir");
+    let cfg = serde_json::json!({
+        "version": 1,
+        "serverUrl": "http://localhost:4001",
+        "publicUrl": format!("http://localhost:{proxy_port}"),
+        "proxyPort": proxy_port
+    });
+    std::fs::write(
+        dir.join("config.json"),
+        serde_json::to_string(&cfg).expect("serialize config"),
+    )
+    .expect("write config");
+}
+
 /// Path to the fake_opencode binary (built by cargo as part of this package).
 pub fn fake_opencode_bin() -> PathBuf {
     assert_cmd::cargo::cargo_bin!("fake_opencode").to_path_buf()
@@ -66,6 +82,9 @@ pub fn spawn_daemon(home: &TestHome, extra_env: &[(&str, &str)]) -> Child {
     let mut cmd = Command::new(daemon_bin());
     cmd.arg("daemon")
         .env("HOME", &home.path)
+        .env("XDG_CONFIG_HOME", home.path.join(".config"))
+        .env("XDG_DATA_HOME", home.path.join(".local/share"))
+        .env("XDG_CACHE_HOME", home.path.join(".cache"))
         .env("PATH", &new_path)
         .env("NIGHTSHIFT_NO_UPDATE", "1")
         .env("RUST_LOG", "nightshift_daemon=debug");
@@ -75,6 +94,33 @@ pub fn spawn_daemon(home: &TestHome, extra_env: &[(&str, &str)]) -> Child {
     }
 
     cmd.spawn().expect("failed to spawn daemon")
+}
+
+/// Spawn the daemon using the real `opencode` from PATH.
+pub fn spawn_daemon_real_opencode(home: &TestHome, extra_env: &[(&str, &str)]) -> Child {
+    let mut cmd = Command::new(daemon_bin());
+    cmd.arg("daemon")
+        .env("HOME", &home.path)
+        .env("XDG_CONFIG_HOME", home.path.join(".config"))
+        .env("XDG_DATA_HOME", home.path.join(".local/share"))
+        .env("XDG_CACHE_HOME", home.path.join(".cache"))
+        .env("NIGHTSHIFT_NO_UPDATE", "1")
+        .env("RUST_LOG", "nightshift_daemon=debug");
+
+    for (k, v) in extra_env {
+        cmd.env(k, v);
+    }
+
+    cmd.spawn().expect("failed to spawn daemon")
+}
+
+/// Returns true if the real `opencode` binary is available on PATH.
+pub fn has_real_opencode() -> bool {
+    Command::new("opencode")
+        .arg("--help")
+        .output()
+        .map(|out| out.status.success())
+        .unwrap_or(false)
 }
 
 /// Wait until a TCP port is accepting connections, up to `timeout`.
