@@ -51,6 +51,7 @@ impl ToolStats {
     }
 }
 
+#[allow(dead_code)]
 fn summarize_input(tool: &str, input: &serde_json::Value) -> String {
     match tool.to_lowercase().as_str() {
         "read" => input
@@ -104,6 +105,7 @@ fn summarize_input(tool: &str, input: &serde_json::Value) -> String {
 
 // --- OpenCode SQLite reader ---
 
+#[allow(dead_code)]
 pub fn read_opencode_tools(session_id: &str) -> Vec<ToolCall> {
     let db_path = opencode_db_path();
     let Some(db_path) = db_path else {
@@ -163,12 +165,14 @@ pub fn read_opencode_tools(session_id: &str) -> Vec<ToolCall> {
 }
 
 #[derive(Deserialize)]
+#[allow(dead_code)]
 struct OpenCodePart {
     tool: Option<String>,
     state: Option<OpenCodeToolState>,
 }
 
 #[derive(Deserialize)]
+#[allow(dead_code)]
 struct OpenCodeToolState {
     status: String,
     input: Option<serde_json::Value>,
@@ -178,11 +182,13 @@ struct OpenCodeToolState {
 }
 
 #[derive(Deserialize)]
+#[allow(dead_code)]
 struct OpenCodeToolTime {
     start: Option<u64>,
     end: Option<u64>,
 }
 
+#[allow(dead_code)]
 fn parse_opencode_part(data: &str, time_created: u64) -> Option<ToolCall> {
     let part: OpenCodePart = serde_json::from_str(data).ok()?;
     let tool = part.tool?;
@@ -222,6 +228,7 @@ fn parse_opencode_part(data: &str, time_created: u64) -> Option<ToolCall> {
     })
 }
 
+#[allow(dead_code)]
 fn opencode_db_path() -> Option<std::path::PathBuf> {
     let home = std::env::var("HOME").ok()?;
     let path = if cfg!(target_os = "macos") {
@@ -236,6 +243,7 @@ fn opencode_db_path() -> Option<std::path::PathBuf> {
 
 // --- Claude Code JSONL reader ---
 
+#[allow(dead_code)]
 pub fn read_claude_tools(transcript_path: &Path) -> Vec<ToolCall> {
     if !transcript_path.exists() {
         return Vec::new();
@@ -340,6 +348,7 @@ pub fn read_claude_tools(transcript_path: &Path) -> Vec<ToolCall> {
     calls
 }
 
+#[allow(dead_code)]
 struct PendingToolUse {
     id: String,
     tool: String,
@@ -347,6 +356,7 @@ struct PendingToolUse {
     timestamp: u64,
 }
 
+#[allow(dead_code)]
 fn parse_iso_timestamp(s: &str) -> Option<u64> {
     // NOTE(victor): Timestamps are ISO 8601 like "2026-02-20T19:39:14.770Z".
     // Parse to epoch ms without pulling in chrono -- just use time crate already in deps.

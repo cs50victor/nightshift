@@ -7,8 +7,8 @@ use axum::routing::{any, get, post};
 use axum::{Json, Router};
 use hyper::body::Incoming;
 use hyper_util::rt::TokioIo;
-use sqlx::SqlitePool;
 use serde_json::json;
+use sqlx::SqlitePool;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::net::{TcpListener, TcpStream};
@@ -97,7 +97,9 @@ async fn get_member_diff(
     match crate::teams_repo::get_member_diff_cwd(&state.db, &team, &name).await {
         Ok(Some((cwd, baseline))) => {
             let diff = if let Some(ref b) = baseline {
-                crate::diff::compute_diff_full(&cwd, b).await.unwrap_or_default()
+                crate::diff::compute_diff_full(&cwd, b)
+                    .await
+                    .unwrap_or_default()
             } else {
                 String::new()
             };
@@ -250,10 +252,7 @@ async fn read_inbox(
     }
 }
 
-async fn get_team_snapshot(
-    State(state): State<AppState>,
-    Path(team): Path<String>,
-) -> Response {
+async fn get_team_snapshot(State(state): State<AppState>, Path(team): Path<String>) -> Response {
     match crate::teams_repo::get_team_snapshot(&state.db, &team).await {
         Ok(Some(snapshot)) => Json(snapshot).into_response(),
         Ok(None) => json_response(StatusCode::NOT_FOUND, r#"{"error":"not found"}"#.into()),
@@ -417,7 +416,10 @@ fn api_router() -> Router<AppState> {
         .route("/openapi.json", get(get_openapi_spec))
         .route("/teams/{team}/snapshot", get(get_team_snapshot))
         .route("/teams/{team}/activity", get(get_activity))
-        .route("/teams/{team}/members/{name}/timeline", get(get_member_timeline))
+        .route(
+            "/teams/{team}/members/{name}/timeline",
+            get(get_member_timeline),
+        )
         .route("/internal/teams/create", post(create_team))
         .route("/internal/teams/delete", post(delete_team))
         .route("/internal/teammates/spawn", post(spawn_teammate))

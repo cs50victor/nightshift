@@ -312,8 +312,8 @@ async fn resolve_team_id(executor: &SqlitePool, team_name: &str) -> Result<Optio
         "SELECT id as \"id!: String\" FROM teams WHERE name = ?",
         team_name,
     )
-        .fetch_optional(executor)
-        .await?;
+    .fetch_optional(executor)
+    .await?;
     Ok(row)
 }
 
@@ -407,8 +407,8 @@ pub async fn delete_team(pool: &SqlitePool, req: DeleteTeamRequest) -> Result<Ac
         archived_at_ms,
         team_id,
     )
-        .execute(&mut *tx)
-        .await?;
+    .execute(&mut *tx)
+    .await?;
     append_activity(
         &mut tx,
         &team_id,
@@ -422,7 +422,10 @@ pub async fn delete_team(pool: &SqlitePool, req: DeleteTeamRequest) -> Result<Ac
     Ok(ActionResponse { ok: true })
 }
 
-pub async fn spawn_teammate(pool: &SqlitePool, req: SpawnTeammateRequest) -> Result<ActionResponse> {
+pub async fn spawn_teammate(
+    pool: &SqlitePool,
+    req: SpawnTeammateRequest,
+) -> Result<ActionResponse> {
     let now = now_ms();
     let team_id = resolve_team_id(pool, &req.team)
         .await?
@@ -501,9 +504,13 @@ pub async fn kill_teammate(pool: &SqlitePool, req: KillTeammateRequest) -> Resul
     .execute(&mut *tx)
     .await?;
 
-    sqlx::query!("UPDATE members SET removed_at_ms = ? WHERE id = ?", now, member_id)
-        .execute(&mut *tx)
-        .await?;
+    sqlx::query!(
+        "UPDATE members SET removed_at_ms = ? WHERE id = ?",
+        now,
+        member_id
+    )
+    .execute(&mut *tx)
+    .await?;
 
     sqlx::query!(
         "UPDATE member_status_current SET alive = 0, state = 'offline', run_id = NULL, last_heartbeat_ms = ? WHERE member_id = ?",
@@ -884,7 +891,11 @@ pub async fn get_member_timeline(
         .collect())
 }
 
-pub async fn get_member_tools(pool: &SqlitePool, team: &str, name: &str) -> Result<Option<MemberToolHistory>> {
+pub async fn get_member_tools(
+    pool: &SqlitePool,
+    team: &str,
+    name: &str,
+) -> Result<Option<MemberToolHistory>> {
     let member = sqlx::query_as!(
         MemberToolLookupRow,
         "SELECT m.id as \"member_id!: String\", m.backend_type as \"backend_type!: String\", t.id as \"team_id!: String\" FROM members m JOIN teams t ON t.id = m.team_id WHERE t.name = ? AND m.name = ?",
@@ -931,7 +942,11 @@ pub async fn get_member_tools(pool: &SqlitePool, team: &str, name: &str) -> Resu
     }))
 }
 
-pub async fn get_member_diff_cwd(pool: &SqlitePool, team: &str, name: &str) -> Result<Option<(String, Option<String>)>> {
+pub async fn get_member_diff_cwd(
+    pool: &SqlitePool,
+    team: &str,
+    name: &str,
+) -> Result<Option<(String, Option<String>)>> {
     let row = sqlx::query_as!(
         MemberDiffRow,
         "SELECT m.cwd, m.opencode_session_id FROM members m JOIN teams t ON t.id = m.team_id WHERE t.name = ? AND m.name = ?",

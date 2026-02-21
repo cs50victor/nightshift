@@ -1,6 +1,6 @@
 mod config;
-mod db;
 mod daemon;
+mod db;
 mod diff;
 mod nodes;
 mod openapi;

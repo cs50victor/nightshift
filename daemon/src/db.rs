@@ -129,14 +129,16 @@ mod tests {
             .execute(&pool)
             .await
             .unwrap();
-        sqlx::query("INSERT INTO member_runs (id, team_id, member_id, started_at_ms) VALUES (?, ?, ?, ?)")
-            .bind("r1")
-            .bind("t1")
-            .bind("m1")
-            .bind(now)
-            .execute(&pool)
-            .await
-            .unwrap();
+        sqlx::query(
+            "INSERT INTO member_runs (id, team_id, member_id, started_at_ms) VALUES (?, ?, ?, ?)",
+        )
+        .bind("r1")
+        .bind("t1")
+        .bind("m1")
+        .bind(now)
+        .execute(&pool)
+        .await
+        .unwrap();
         sqlx::query("INSERT INTO tool_calls (id, team_id, member_id, backend_type, source, tool_name, input_summary, status, started_at_ms, ingested_at_ms) VALUES (?, ?, ?, 'claude', 'adapter_observer', 'read', '/tmp/a', 'started', ?, ?)")
             .bind("c1")
             .bind("t1")
@@ -164,10 +166,12 @@ mod tests {
             .fetch_one(&pool)
             .await
             .unwrap();
-        let offline: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM member_status_current WHERE alive = 0 AND state = 'offline'")
-            .fetch_one(&pool)
-            .await
-            .unwrap();
+        let offline: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM member_status_current WHERE alive = 0 AND state = 'offline'",
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
 
         assert_eq!(run_ended, 1);
         assert_eq!(cancelled, 1);
