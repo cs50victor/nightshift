@@ -1,7 +1,8 @@
 use serde::{Deserialize, Serialize};
 use std::path::Path;
+use utoipa::ToSchema;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ToolCall {
     pub tool: String,
@@ -12,7 +13,7 @@ pub struct ToolCall {
     pub duration_ms: Option<u64>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct MemberToolHistory {
     pub name: String,
@@ -22,7 +23,7 @@ pub struct MemberToolHistory {
     pub stats: ToolStats,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ToolStats {
     pub total: u32,

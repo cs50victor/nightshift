@@ -16,7 +16,6 @@ type ProxyBody = Either<Incoming, Full<Bytes>>;
 const STARTUP_RETRY_WINDOW: Duration = Duration::from_secs(8);
 const STARTUP_MAX_RETRIES: u32 = 5;
 const STARTUP_RETRY_DELAY: Duration = Duration::from_millis(200);
-const OPENCODE_OPENAPI_PATH: &str = "/doc";
 
 fn json_response(status: StatusCode, body: String) -> Response<ProxyBody> {
     Response::builder()
@@ -31,191 +30,6 @@ fn internal_error_response(msg: &str) -> Response<ProxyBody> {
         StatusCode::INTERNAL_SERVER_ERROR,
         format!(r#"{{"error":"{}"}}"#, msg.replace('"', "\\\"")),
     )
-}
-
-fn daemon_openapi_paths() -> serde_json::Value {
-    serde_json::json!({
-        "/project/absolute_path": {
-            "get": {
-                "summary": "Get project absolute path",
-                "description": "Return the daemon project path used by this proxy instance.",
-                "operationId": "daemon.project.absolutePath",
-                "responses": {
-                    "200": {
-                        "description": "Project path",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "required": ["path"],
-                                    "properties": {
-                                        "path": { "type": "string" }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/teams": {
-            "get": {
-                "summary": "List teams",
-                "description": "List active and archived team summaries discovered from local claude-teams state.",
-                "operationId": "daemon.teams.list",
-                "responses": {
-                    "200": {
-                        "description": "Team summaries",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "array",
-                                    "items": {
-                                        "type": "object",
-                                        "additionalProperties": true
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/teams/{team}/members/{name}/diff": {
-            "get": {
-                "summary": "Get member diff",
-                "description": "Return git diff details for a team member since captured baseline.",
-                "operationId": "daemon.teams.member.diff",
-                "parameters": [
-                    {
-                        "name": "team",
-                        "in": "path",
-                        "required": true,
-                        "schema": { "type": "string" }
-                    },
-                    {
-                        "name": "name",
-                        "in": "path",
-                        "required": true,
-                        "schema": { "type": "string" }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Member diff",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "additionalProperties": true
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "Not found",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "required": ["error"],
-                                    "properties": {
-                                        "error": { "type": "string" }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/teams/{team}/members/{name}/tools": {
-            "get": {
-                "summary": "Get member tool history",
-                "description": "Return tool call history and aggregate stats for a team member.",
-                "operationId": "daemon.teams.member.tools",
-                "parameters": [
-                    {
-                        "name": "team",
-                        "in": "path",
-                        "required": true,
-                        "schema": { "type": "string" }
-                    },
-                    {
-                        "name": "name",
-                        "in": "path",
-                        "required": true,
-                        "schema": { "type": "string" }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Member tool history",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "additionalProperties": true
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "Not found",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "required": ["error"],
-                                    "properties": {
-                                        "error": { "type": "string" }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    })
-}
-
-async fn merged_openapi_spec(opencode_port: u16, proxy_port: u16) -> Result<serde_json::Value> {
-    let upstream_url = format!("http://127.0.0.1:{opencode_port}{OPENCODE_OPENAPI_PATH}");
-    let mut spec: serde_json::Value = reqwest::get(&upstream_url)
-        .await
-        .with_context(|| format!("failed to fetch upstream openapi from {upstream_url}"))?
-        .error_for_status()
-        .with_context(|| format!("upstream openapi returned non-success from {upstream_url}"))?
-        .json()
-        .await
-        .context("failed to parse upstream openapi json")?;
-
-    let paths = spec
-        .as_object_mut()
-        .and_then(|o| o.get_mut("paths"))
-        .and_then(|p| p.as_object_mut())
-        .context("upstream openapi missing object 'paths'")?;
-
-    if let Some(daemon_paths) = daemon_openapi_paths().as_object() {
-        for (path, item) in daemon_paths {
-            paths.insert(path.clone(), item.clone());
-        }
-    }
-
-    if let Some(obj) = spec.as_object_mut() {
-        obj.insert(
-            "servers".to_string(),
-            serde_json::json!([
-                {
-                    "url": format!("http://localhost:{proxy_port}"),
-                    "description": "nightshift daemon proxy"
-                }
-            ]),
-        );
-    }
-
-    Ok(spec)
 }
 
 fn parse_team_member_path<'a>(path: &'a str, suffix: &str) -> Option<(&'a str, &'a str)> {
@@ -242,16 +56,18 @@ async fn handle(
     if (req.uri().path() == "/openapi.json" || req.uri().path() == "/doc")
         && *req.method() == Method::GET
     {
-        return Ok(match merged_openapi_spec(opencode_port, proxy_port).await {
-            Ok(spec) => json_response(
-                StatusCode::OK,
-                serde_json::to_string(&spec).unwrap_or_else(|_| "{}".into()),
-            ),
-            Err(e) => {
-                tracing::warn!("failed to build merged openapi spec: {e}");
-                internal_error_response("failed to build openapi spec")
-            }
-        });
+        return Ok(
+            match crate::openapi::merged_openapi_spec(opencode_port, proxy_port).await {
+                Ok(spec) => json_response(
+                    StatusCode::OK,
+                    serde_json::to_string(&spec).unwrap_or_else(|_| "{}".into()),
+                ),
+                Err(e) => {
+                    tracing::warn!("failed to build merged openapi spec: {e}");
+                    internal_error_response("failed to build openapi spec")
+                }
+            },
+        );
     }
 
     if req.uri().path() == "/project/absolute_path" {
