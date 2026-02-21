@@ -71,10 +71,7 @@ fn summarize_input(tool: &str, input: &serde_json::Value) -> String {
             .unwrap_or(tool)
             .to_string(),
         "bash" => {
-            let cmd = input
-                .get("command")
-                .and_then(|v| v.as_str())
-                .unwrap_or("");
+            let cmd = input.get("command").and_then(|v| v.as_str()).unwrap_or("");
             if cmd.len() > 80 {
                 format!("{}...", &cmd[..77])
             } else {
@@ -189,7 +186,11 @@ fn parse_opencode_part(data: &str, time_created: u64) -> Option<ToolCall> {
     let part: OpenCodePart = serde_json::from_str(data).ok()?;
     let tool = part.tool?;
     let state = part.state?;
-    let input = state.input.as_ref().cloned().unwrap_or(serde_json::Value::Null);
+    let input = state
+        .input
+        .as_ref()
+        .cloned()
+        .unwrap_or(serde_json::Value::Null);
     let summary = summarize_input(&tool, &input);
 
     let duration_ms = state.time.as_ref().and_then(|t| {
@@ -223,11 +224,10 @@ fn parse_opencode_part(data: &str, time_created: u64) -> Option<ToolCall> {
 fn opencode_db_path() -> Option<std::path::PathBuf> {
     let home = std::env::var("HOME").ok()?;
     let path = if cfg!(target_os = "macos") {
-        std::path::PathBuf::from(&home)
-            .join("Library/Application Support/opencode/opencode.db")
+        std::path::PathBuf::from(&home).join("Library/Application Support/opencode/opencode.db")
     } else {
-        let xdg_data = std::env::var("XDG_DATA_HOME")
-            .unwrap_or_else(|_| format!("{home}/.local/share"));
+        let xdg_data =
+            std::env::var("XDG_DATA_HOME").unwrap_or_else(|_| format!("{home}/.local/share"));
         std::path::PathBuf::from(xdg_data).join("opencode/opencode.db")
     };
     Some(path)
@@ -243,7 +243,10 @@ pub fn read_claude_tools(transcript_path: &Path) -> Vec<ToolCall> {
     let contents = match std::fs::read_to_string(transcript_path) {
         Ok(c) => c,
         Err(e) => {
-            tracing::warn!("failed to read claude transcript {}: {e}", transcript_path.display());
+            tracing::warn!(
+                "failed to read claude transcript {}: {e}",
+                transcript_path.display()
+            );
             return Vec::new();
         }
     };
@@ -269,15 +272,16 @@ pub fn read_claude_tools(transcript_path: &Path) -> Vec<ToolCall> {
 
         match msg_type {
             "assistant" => {
-                let content = entry
-                    .pointer("/message/content")
-                    .and_then(|v| v.as_array());
+                let content = entry.pointer("/message/content").and_then(|v| v.as_array());
                 if let Some(blocks) = content {
                     for block in blocks {
                         if block.get("type").and_then(|v| v.as_str()) == Some("tool_use") {
                             let id = block.get("id").and_then(|v| v.as_str()).unwrap_or("");
                             let name = block.get("name").and_then(|v| v.as_str()).unwrap_or("");
-                            let input = block.get("input").cloned().unwrap_or(serde_json::Value::Null);
+                            let input = block
+                                .get("input")
+                                .cloned()
+                                .unwrap_or(serde_json::Value::Null);
                             tool_uses.push(PendingToolUse {
                                 id: id.to_string(),
                                 tool: name.to_string(),
@@ -289,9 +293,7 @@ pub fn read_claude_tools(transcript_path: &Path) -> Vec<ToolCall> {
                 }
             }
             "user" => {
-                let content = entry
-                    .pointer("/message/content")
-                    .and_then(|v| v.as_array());
+                let content = entry.pointer("/message/content").and_then(|v| v.as_array());
                 if let Some(blocks) = content {
                     for block in blocks {
                         if block.get("type").and_then(|v| v.as_str()) == Some("tool_result") {
@@ -394,11 +396,46 @@ mod tests {
     #[test]
     fn should_compute_tool_stats() {
         let calls = vec![
-            ToolCall { tool: "Read".into(), title: None, input_summary: "f".into(), status: "completed".into(), timestamp: 0, duration_ms: None },
-            ToolCall { tool: "Read".into(), title: None, input_summary: "f".into(), status: "completed".into(), timestamp: 0, duration_ms: None },
-            ToolCall { tool: "Edit".into(), title: None, input_summary: "f".into(), status: "completed".into(), timestamp: 0, duration_ms: None },
-            ToolCall { tool: "Bash".into(), title: None, input_summary: "f".into(), status: "completed".into(), timestamp: 0, duration_ms: None },
-            ToolCall { tool: "Glob".into(), title: None, input_summary: "f".into(), status: "completed".into(), timestamp: 0, duration_ms: None },
+            ToolCall {
+                tool: "Read".into(),
+                title: None,
+                input_summary: "f".into(),
+                status: "completed".into(),
+                timestamp: 0,
+                duration_ms: None,
+            },
+            ToolCall {
+                tool: "Read".into(),
+                title: None,
+                input_summary: "f".into(),
+                status: "completed".into(),
+                timestamp: 0,
+                duration_ms: None,
+            },
+            ToolCall {
+                tool: "Edit".into(),
+                title: None,
+                input_summary: "f".into(),
+                status: "completed".into(),
+                timestamp: 0,
+                duration_ms: None,
+            },
+            ToolCall {
+                tool: "Bash".into(),
+                title: None,
+                input_summary: "f".into(),
+                status: "completed".into(),
+                timestamp: 0,
+                duration_ms: None,
+            },
+            ToolCall {
+                tool: "Glob".into(),
+                title: None,
+                input_summary: "f".into(),
+                status: "completed".into(),
+                timestamp: 0,
+                duration_ms: None,
+            },
         ];
         let stats = ToolStats::from_calls(&calls);
         assert_eq!(stats.total, 5);

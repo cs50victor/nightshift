@@ -28,9 +28,7 @@ export function PermissionDialog({ sessionID }: PermissionDialogProps) {
           <div className="flex flex-col gap-1 text-sm">
             <span className="font-medium text-fg">{perm.permission}</span>
             {perm.patterns.length > 0 && (
-              <span className="text-muted-fg">
-                {perm.patterns.join(", ")}
-              </span>
+              <span className="text-muted-fg">{perm.patterns.join(", ")}</span>
             )}
           </div>
           <div className="flex shrink-0 items-center gap-2">

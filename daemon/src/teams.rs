@@ -228,12 +228,9 @@ pub async fn get_member_diff(
     let member_info = {
         let data = handle.read().await;
         if let Some(team) = data.active.get(team_name) {
-            team.members.get(member_name).map(|m| {
-                (
-                    m.config.cwd.clone(),
-                    m.baseline_commit.clone(),
-                )
-            })
+            team.members
+                .get(member_name)
+                .map(|m| (m.config.cwd.clone(), m.baseline_commit.clone()))
         } else if let Some(archive) = data.archived.get(team_name) {
             if let Some(diff) = archive.member_diffs.get(member_name) {
                 return Some(MemberDiffDetail {

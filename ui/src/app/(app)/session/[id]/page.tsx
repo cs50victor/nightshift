@@ -1,8 +1,5 @@
 "use client";
-import {
-  SparklesIcon,
-  UserIcon,
-} from "@heroicons/react/24/solid";
+import { SparklesIcon, UserIcon } from "@heroicons/react/24/solid";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type Attachment, ChatInput } from "@/components/chat-input";
@@ -145,7 +142,11 @@ export default function SessionPage() {
   }, [sessionId]);
 
   const sendMessage = useCallback(
-    async (messageText: string, messageId: string, attachments?: Attachment[]) => {
+    async (
+      messageText: string,
+      messageId: string,
+      attachments?: Attachment[],
+    ) => {
       if (!sessionId) return;
       try {
         await useMessageStore.getState().sendMessage(sessionId, {
@@ -174,7 +175,10 @@ export default function SessionPage() {
     setSending(true);
 
     while (messageQueueRef.current.length > 0) {
-      const next = messageQueueRef.current.shift()!;
+      const next = messageQueueRef.current.shift();
+      if (!next) {
+        continue;
+      }
       await sendMessage(next.text, next.id, next.attachments);
     }
 
@@ -190,10 +194,16 @@ export default function SessionPage() {
     setInput("");
     setError(null);
 
+    const attachmentCount = attachments?.length ?? 0;
+    const optimisticText = messageText || `[${attachmentCount} attachment(s)]`;
     const messageId = useMessageStore
       .getState()
-      .addOptimisticMessage(sessionId, messageText || `[${attachments!.length} attachment(s)]`);
-    messageQueueRef.current.push({ id: messageId, text: messageText, attachments });
+      .addOptimisticMessage(sessionId, optimisticText);
+    messageQueueRef.current.push({
+      id: messageId,
+      text: messageText,
+      attachments,
+    });
     processQueue();
 
     isNearBottomRef.current = true;

@@ -1,6 +1,16 @@
 "use client";
 
-import { ArrowUp, FileText, ImageIcon, Film, FileAudio, FileIcon, Plus, X } from "lucide-react";
+import {
+  ArrowUp,
+  FileAudio,
+  FileIcon,
+  FileText,
+  Film,
+  ImageIcon,
+  Plus,
+  X,
+} from "lucide-react";
+import Image from "next/image";
 import { useRef, useState } from "react";
 import { AgentSelect } from "@/components/agent-select";
 import {
@@ -18,9 +28,12 @@ function isMediaFile(mime: string): boolean {
 }
 
 function attachmentIcon(mime: string) {
-  if (mime.startsWith("video/")) return <Film className="size-6 text-muted-fg" />;
-  if (mime.startsWith("audio/")) return <FileAudio className="size-6 text-muted-fg" />;
-  if (mime === "application/pdf") return <FileIcon className="size-6 text-muted-fg" />;
+  if (mime.startsWith("video/"))
+    return <Film className="size-6 text-muted-fg" />;
+  if (mime.startsWith("audio/"))
+    return <FileAudio className="size-6 text-muted-fg" />;
+  if (mime === "application/pdf")
+    return <FileIcon className="size-6 text-muted-fg" />;
   return null;
 }
 
@@ -86,8 +99,7 @@ export function ChatInput({
         if (isMediaFile(file.type)) {
           readFileAsDataUrl(file);
         } else {
-          const newValue =
-            input + (input.endsWith(" ") ? "" : " ") + `@${file.name} `;
+          const newValue = `${input}${input.endsWith(" ") ? "" : " "}@${file.name} `;
           onInputChange(newValue);
         }
       }
@@ -145,13 +157,16 @@ export function ChatInput({
         onChange={(e) => handleFileUpload(e, "media")}
       />
 
-      <form onSubmit={(e) => {
-        e.preventDefault();
-        if (!input.trim() && attachments.length === 0) return;
-        const submitted = attachments.length > 0 ? [...attachments] : undefined;
-        setAttachments([]);
-        onSubmit(e, submitted);
-      }}>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!input.trim() && attachments.length === 0) return;
+          const submitted =
+            attachments.length > 0 ? [...attachments] : undefined;
+          setAttachments([]);
+          onSubmit(e, submitted);
+        }}
+      >
         <div className="rounded-2xl border border-border bg-muted/40 overflow-hidden">
           <div className="p-3">
             <Textarea
@@ -205,7 +220,8 @@ export function ChatInput({
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
                   if (input.trim() || attachments.length > 0) {
-                    const submitted = attachments.length > 0 ? [...attachments] : undefined;
+                    const submitted =
+                      attachments.length > 0 ? [...attachments] : undefined;
                     setAttachments([]);
                     onSubmit(e as unknown as React.FormEvent, submitted);
                   }
@@ -220,12 +236,16 @@ export function ChatInput({
           {attachments.length > 0 && (
             <div className="px-3 pb-2 flex flex-wrap gap-2">
               {attachments.map((att, i) => (
-                <div key={`${att.filename}-${i}`} className="relative inline-block">
+                <div
+                  key={`${att.filename}-${i}`}
+                  className="relative inline-block"
+                >
                   {att.mime.startsWith("image/") ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <Image
                       src={att.dataUrl}
                       alt={att.filename}
+                      width={64}
+                      height={64}
                       className="h-16 w-16 rounded-lg object-cover border border-border"
                     />
                   ) : (
@@ -253,14 +273,17 @@ export function ChatInput({
           <div className="flex items-center gap-1 px-2 py-1.5">
             <Menu>
               <MenuTrigger>
-                <div
-                  role="button"
-                  tabIndex={0}
+                <button
+                  type="button"
                   aria-label="Attach"
-                  className={buttonStyles({ intent: "plain", size: "sq-xs", className: "rounded-lg cursor-default" })}
+                  className={buttonStyles({
+                    intent: "plain",
+                    size: "sq-xs",
+                    className: "rounded-lg cursor-default",
+                  })}
                 >
                   <Plus data-slot="icon" className="size-4" />
-                </div>
+                </button>
               </MenuTrigger>
               <MenuContent placement="top">
                 <MenuItem onAction={() => mediaInputRef.current?.click()}>
@@ -286,7 +309,9 @@ export function ChatInput({
               type="submit"
               intent="secondary"
               size="sq-sm"
-              isDisabled={(!input.trim() && attachments.length === 0) || sending}
+              isDisabled={
+                (!input.trim() && attachments.length === 0) || sending
+              }
               className="rounded-full"
             >
               <ArrowUp data-slot="icon" className="size-4" />

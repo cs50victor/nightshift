@@ -64,10 +64,7 @@ async fn handle(
                         let body = serde_json::to_string(&d).unwrap_or_else(|_| "{}".into());
                         json_response(StatusCode::OK, body)
                     }
-                    None => json_response(
-                        StatusCode::NOT_FOUND,
-                        r#"{"error":"not found"}"#.into(),
-                    ),
+                    None => json_response(StatusCode::NOT_FOUND, r#"{"error":"not found"}"#.into()),
                 },
             );
         }
@@ -81,10 +78,7 @@ async fn handle(
                         let body = serde_json::to_string(&t).unwrap_or_else(|_| "{}".into());
                         json_response(StatusCode::OK, body)
                     }
-                    None => json_response(
-                        StatusCode::NOT_FOUND,
-                        r#"{"error":"not found"}"#.into(),
-                    ),
+                    None => json_response(StatusCode::NOT_FOUND, r#"{"error":"not found"}"#.into()),
                 },
             );
         }
