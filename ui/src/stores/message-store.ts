@@ -2,6 +2,7 @@
 import type { Message, Part } from "@opencode-ai/sdk";
 import { create } from "zustand";
 import api from "@/lib/api";
+import { useConfigStore } from "@/stores/config-store";
 
 export interface MessageWithParts {
   info: Message;
@@ -24,6 +25,7 @@ interface MessageState {
       attachments?: { dataUrl: string; filename: string; mime: string }[];
     },
   ) => Promise<void>;
+  handleSessionError: (sessionID: string, error: unknown) => Promise<boolean>;
 
   addOptimisticMessage: (sessionID: string, text: string) => string;
   removeOptimisticMessage: (sessionID: string, messageID: string) => void;
@@ -41,6 +43,132 @@ interface MessageState {
 }
 
 let optimisticCounter = 0;
+
+type Family = "claude" | "openai" | "opencode";
+
+interface QueuedSend {
+  parts: Record<string, string>[];
+  agent?: string;
+  candidates: Array<{ providerID: string; modelID: string }>;
+  index: number;
+  createdAt: number;
+}
+
+const FALLBACK_MAX_AGE_MS = 5 * 60 * 1000;
+const pendingFallbackBySession: Record<string, QueuedSend> = {};
+
+function normalizeFamily(providerID: string): Family | null {
+  const normalized = providerID.toLowerCase();
+  if (normalized === "anthropic" || normalized === "claude") return "claude";
+  if (normalized === "openai") return "openai";
+  if (normalized === "opencode") return "opencode";
+  return null;
+}
+
+function familyOrder(primaryProviderID: string): Family[] {
+  const primary = normalizeFamily(primaryProviderID);
+  if (primary === "claude") return ["claude", "openai", "opencode"];
+  if (primary === "openai") return ["openai", "claude", "opencode"];
+  if (primary === "opencode") return ["opencode", "openai", "claude"];
+  return ["claude", "openai", "opencode"];
+}
+
+function pickFamilyModel(
+  family: Family,
+  currentModelID: string,
+): { providerID: string; modelID: string } | null {
+  const providers = useConfigStore.getState().providers;
+  const matchedProviders = providers.filter(
+    (provider) => normalizeFamily(provider.id) === family,
+  );
+  if (matchedProviders.length === 0) return null;
+
+  for (const provider of matchedProviders) {
+    if (provider.models[currentModelID]) {
+      return { providerID: provider.id, modelID: currentModelID };
+    }
+  }
+
+  const provider = matchedProviders[0];
+  const modelID = Object.keys(provider.models ?? {})[0];
+  if (!modelID) return null;
+  return { providerID: provider.id, modelID };
+}
+
+function buildFallbackCandidates(model: {
+  providerID: string;
+  modelID: string;
+}): Array<{ providerID: string; modelID: string }> {
+  const order = familyOrder(model.providerID);
+  const picked = order
+    .map((family) => pickFamilyModel(family, model.modelID))
+    .filter(
+      (
+        candidate,
+      ): candidate is {
+        providerID: string;
+        modelID: string;
+      } => Boolean(candidate),
+    );
+  const deduped = picked.filter(
+    (candidate, index, all) =>
+      all.findIndex(
+        (entry) =>
+          entry.providerID === candidate.providerID &&
+          entry.modelID === candidate.modelID,
+      ) === index,
+  );
+  if (deduped.length > 3) return deduped.slice(0, 3);
+  return deduped;
+}
+
+function isRetryableError(error: unknown): boolean {
+  if (!error) return false;
+  if (typeof error === "string") {
+    const normalized = error.toLowerCase();
+    return (
+      normalized.includes("429") ||
+      normalized.includes("rate") ||
+      normalized.includes("overload") ||
+      normalized.includes("temporar") ||
+      normalized.includes("503") ||
+      normalized.includes("502")
+    );
+  }
+  if (error instanceof Error) {
+    return isRetryableError(error.message);
+  }
+  if (typeof error === "object") {
+    const record = error as Record<string, unknown>;
+    if (record.name === "APIError") {
+      const data =
+        record.data && typeof record.data === "object"
+          ? (record.data as Record<string, unknown>)
+          : null;
+      if (data && typeof data.isRetryable === "boolean") {
+        return data.isRetryable;
+      }
+      if (data && typeof data.statusCode === "number") {
+        return data.statusCode === 429 || data.statusCode >= 500;
+      }
+    }
+    if (typeof record.message === "string") {
+      return isRetryableError(record.message);
+    }
+  }
+  return false;
+}
+
+async function postPrompt(
+  sessionID: string,
+  payload: {
+    parts: Record<string, string>[];
+    model: { providerID: string; modelID: string };
+    agent?: string;
+  },
+) {
+  await api.post(`/session/${sessionID}/prompt_async`, payload);
+}
 
 export const useMessageStore = create<MessageState>((set) => ({
   messagesBySession: {},
@@ -72,11 +200,56 @@ export const useMessageStore = create<MessageState>((set) => ({
         });
       }
     }
-    await api.post(`/session/${sessionID}/prompt_async`, {
+    const candidates = buildFallbackCandidates(model);
+    if (candidates.length === 0) {
+      await postPrompt(sessionID, { parts, model, agent });
+      return;
+    }
+
+    pendingFallbackBySession[sessionID] = {
       parts,
-      model,
+      agent,
+      candidates,
+      index: 0,
+      createdAt: Date.now(),
+    };
+    await postPrompt(sessionID, {
+      parts,
+      model: candidates[0],
       agent,
     });
+  },
+
+  handleSessionError: async (sessionID, error) => {
+    const queued = pendingFallbackBySession[sessionID];
+    if (!queued) return false;
+    if (!isRetryableError(error)) {
+      delete pendingFallbackBySession[sessionID];
+      return false;
+    }
+    const age = Date.now() - queued.createdAt;
+    if (age > FALLBACK_MAX_AGE_MS) {
+      delete pendingFallbackBySession[sessionID];
+      return false;
+    }
+
+    const nextIndex = queued.index + 1;
+    const nextModel = queued.candidates[nextIndex];
+    if (!nextModel) {
+      delete pendingFallbackBySession[sessionID];
+      return false;
+    }
+
+    queued.index = nextIndex;
+    queued.createdAt = Date.now();
+    pendingFallbackBySession[sessionID] = queued;
+
+    await postPrompt(sessionID, {
+      parts: queued.parts,
+      model: nextModel,
+      agent: queued.agent,
+    });
+    return true;
   },
 
   addOptimisticMessage: (sessionID, text) => {

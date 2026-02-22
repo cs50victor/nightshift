@@ -99,9 +99,21 @@ function dispatchEvent(event: Event) {
       break;
     case "session.error":
       if (!hasString(props, "sessionID")) break;
-      useSessionStore
+      void useMessageStore
         .getState()
-        .onSessionError(props.sessionID as string, props.error);
+        .handleSessionError(props.sessionID as string, props.error)
+        .then((handled) => {
+          if (!handled) {
+            useSessionStore
+              .getState()
+              .onSessionError(props.sessionID as string, props.error);
+          }
+        })
+        .catch(() => {
+          useSessionStore
+            .getState()
+            .onSessionError(props.sessionID as string, props.error);
+        });
       break;
     case "todo.updated":
       if (!hasString(props, "sessionID") || !hasArray(props, "todos")) break;
