@@ -26,11 +26,6 @@ const WATCHDOG_THRESHOLD: Duration = Duration::from_secs(5);
 const OPENCODE_PID_FILE: &str = "opencode.pid";
 const READINESS_TIMEOUT: Duration = Duration::from_secs(8);
 const CLAUDE_TEAMS_SCRIPT_PLACEHOLDER: &str = "__NIGHTSHIFT_CLAUDE_TEAMS_SCRIPT__";
-const CLAUDE_TEAMS_SRC_PLACEHOLDER: &str = "__NIGHTSHIFT_CLAUDE_TEAMS_SRC__";
-const DEFAULT_CLAUDE_TEAMS_SRC: &str = concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/../../claude-code-teams-mcp/src"
-);
 
 #[cfg(unix)]
 fn kill_stale_opencode(pid_path: &std::path::Path) {
@@ -248,17 +243,7 @@ pub async fn run() -> Result<()> {
     let scripts_dir = data_dir.join("scripts");
     std::fs::create_dir_all(&scripts_dir)?;
     let claude_teams_script_path = scripts_dir.join("claude_teams_mcp.py");
-    let claude_teams_src = std::env::var("NIGHTSHIFT_CLAUDE_TEAMS_SRC")
-        .unwrap_or_else(|_| DEFAULT_CLAUDE_TEAMS_SRC.to_string());
-    if !std::path::Path::new(&claude_teams_src).exists() {
-        tracing::warn!(
-            "NIGHTSHIFT_CLAUDE_TEAMS_SRC does not exist: {}",
-            claude_teams_src
-        );
-    }
-    let rendered_mcp_script =
-        CLAUDE_TEAMS_MCP_SCRIPT.replace(CLAUDE_TEAMS_SRC_PLACEHOLDER, &claude_teams_src);
-    std::fs::write(&claude_teams_script_path, rendered_mcp_script)?;
+    std::fs::write(&claude_teams_script_path, CLAUDE_TEAMS_MCP_SCRIPT)?;
 
     #[cfg(unix)]
     {
