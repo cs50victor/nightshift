@@ -83,7 +83,7 @@ struct ToolCallRow {
 #[derive(FromRow)]
 struct MemberDiffRow {
     cwd: String,
-    opencode_session_id: Option<String>,
+    baseline_commit: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
@@ -241,7 +241,7 @@ pub struct UpdateTaskRequest {
     pub description: Option<String>,
     pub active_form: Option<String>,
     pub status: Option<String>,
-    pub owner_name: Option<String>,
+    pub owner_name: Option<Option<String>>,
     pub metadata_json: Option<serde_json::Value>,
 }
 
@@ -432,12 +432,12 @@ pub async fn spawn_teammate(
         .ok_or_else(|| anyhow!("team not found"))?;
     let member_id = Uuid::new_v4().to_string();
     let run_id = Uuid::new_v4().to_string();
-    let baseline = git_head(&req.cwd).await;
+    let baseline_commit = git_head(&req.cwd).await;
     let plan_mode_required = if req.plan_mode_required { 1 } else { 0 };
 
     let mut tx = pool.begin().await?;
     sqlx::query!(
-        "INSERT INTO members (id, team_id, name, agent_type, model, backend_type, cwd, plan_mode_required, joined_at_ms, opencode_session_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO members (id, team_id, name, agent_type, model, backend_type, cwd, plan_mode_required, joined_at_ms, baseline_commit) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         member_id,
         team_id,
         req.name,
@@ -447,7 +447,7 @@ pub async fn spawn_teammate(
         req.cwd,
         plan_mode_required,
         now,
-        baseline,
+        baseline_commit,
     )
     .execute(&mut *tx)
     .await?;
@@ -572,46 +572,81 @@ pub async fn create_task(pool: &SqlitePool, req: CreateTaskRequest) -> Result<Ac
 }
 
 pub async fn update_task(pool: &SqlitePool, req: UpdateTaskRequest) -> Result<ActionResponse> {
+    let UpdateTaskRequest {
+        team,
+        external_task_id,
+        subject,
+        description,
+        active_form,
+        status,
+        owner_name,
+        metadata_json,
+    } = req;
     let now = now_ms();
-    let team_id = resolve_team_id(pool, &req.team)
+    let team_id = resolve_team_id(pool, &team)
         .await?
         .ok_or_else(|| anyhow!("team not found"))?;
-    let owner_id = match req.owner_name.as_deref() {
-        Some(name) => resolve_member_id(pool, &team_id, name).await?,
-        None => None,
-    };
     let existing_meta: Option<Option<String>> = sqlx::query_scalar!(
         "SELECT metadata_json FROM tasks WHERE team_id = ? AND external_task_id = ?",
         team_id,
-        req.external_task_id,
+        external_task_id,
     )
     .fetch_optional(pool)
     .await?;
     let existing_meta = existing_meta.flatten();
 
-    let merged_meta = merge_metadata(existing_meta, req.metadata_json);
+    let merged_meta = merge_metadata(existing_meta, metadata_json);
 
     let mut tx = pool.begin().await?;
-    sqlx::query!(
-        "UPDATE tasks SET subject = COALESCE(?, subject), description = COALESCE(?, description), active_form = COALESCE(?, active_form), status = COALESCE(?, status), owner_member_id = COALESCE(?, owner_member_id), metadata_json = ?, updated_at_ms = ? WHERE team_id = ? AND external_task_id = ?",
-        req.subject,
-        req.description,
-        req.active_form,
-        req.status,
-        owner_id,
-        merged_meta,
-        now,
-        team_id,
-        req.external_task_id,
-    )
-    .execute(&mut *tx)
-    .await?;
+    let rows_affected = if let Some(owner_name) = owner_name {
+        let owner_member_id: Option<String> = match owner_name {
+            Some(name) => Some(
+                resolve_member_id(pool, &team_id, &name)
+                    .await?
+                    .ok_or_else(|| anyhow!("owner member not found"))?,
+            ),
+            None => None,
+        };
+        sqlx::query!(
+            "UPDATE tasks SET subject = COALESCE(?, subject), description = COALESCE(?, description), active_form = COALESCE(?, active_form), status = COALESCE(?, status), owner_member_id = ?, metadata_json = ?, updated_at_ms = ? WHERE team_id = ? AND external_task_id = ?",
+            subject,
+            description,
+            active_form,
+            status,
+            owner_member_id,
+            merged_meta,
+            now,
+            team_id,
+            external_task_id,
+        )
+        .execute(&mut *tx)
+        .await?
+        .rows_affected()
+    } else {
+        sqlx::query!(
+            "UPDATE tasks SET subject = COALESCE(?, subject), description = COALESCE(?, description), active_form = COALESCE(?, active_form), status = COALESCE(?, status), metadata_json = ?, updated_at_ms = ? WHERE team_id = ? AND external_task_id = ?",
+            subject,
+            description,
+            active_form,
+            status,
+            merged_meta,
+            now,
+            team_id,
+            external_task_id,
+        )
+        .execute(&mut *tx)
+        .await?
+        .rows_affected()
+    };
+    if rows_affected == 0 {
+        return Err(anyhow!("task not found"));
+    }
     append_activity(
         &mut tx,
         &team_id,
         None,
         "task_updated",
-        json!({"externalTaskId": req.external_task_id}),
+        json!({"externalTaskId": external_task_id}),
     )
     .await?;
     tx.commit().await?;
@@ -639,11 +674,19 @@ pub async fn send_message(pool: &SqlitePool, req: SendMessageRequest) -> Result<
         .await?
         .ok_or_else(|| anyhow!("team not found"))?;
     let from_id = match req.from_name.as_deref() {
-        Some(name) => resolve_member_id(pool, &team_id, name).await?,
+        Some(name) => Some(
+            resolve_member_id(pool, &team_id, name)
+                .await?
+                .ok_or_else(|| anyhow!("from member not found"))?,
+        ),
         None => None,
     };
     let to_id = match req.to_name.as_deref() {
-        Some(name) => resolve_member_id(pool, &team_id, name).await?,
+        Some(name) => Some(
+            resolve_member_id(pool, &team_id, name)
+                .await?
+                .ok_or_else(|| anyhow!("to member not found"))?,
+        ),
         None => None,
     };
     let msg_id = Uuid::new_v4().to_string();
@@ -949,13 +992,13 @@ pub async fn get_member_diff_cwd(
 ) -> Result<Option<(String, Option<String>)>> {
     let row = sqlx::query_as!(
         MemberDiffRow,
-        "SELECT m.cwd, m.opencode_session_id FROM members m JOIN teams t ON t.id = m.team_id WHERE t.name = ? AND m.name = ?",
+        "SELECT m.cwd, m.baseline_commit FROM members m JOIN teams t ON t.id = m.team_id WHERE t.name = ? AND m.name = ?",
         team,
         name,
     )
-        .fetch_optional(pool)
-        .await?;
-    Ok(row.map(|r| (r.cwd, r.opencode_session_id)))
+    .fetch_optional(pool)
+    .await?;
+    Ok(row.map(|r| (r.cwd, r.baseline_commit)))
 }
 
 async fn git_head(cwd: &str) -> Option<String> {
