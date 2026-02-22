@@ -1,3 +1,5 @@
+mod claude_ingest;
+mod claude_transcript;
 mod config;
 mod daemon;
 mod db;

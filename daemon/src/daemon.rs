@@ -392,6 +392,7 @@ pub async fn run() -> Result<()> {
     let db_pool = crate::db::open(&teams_db_path).await?;
     crate::db::reconcile_on_boot(&db_pool).await?;
     let db_pool = Arc::new(db_pool);
+    crate::claude_ingest::ensure_live_ingest((*db_pool).clone()).await?;
 
     let start_time = std::time::Instant::now();
 

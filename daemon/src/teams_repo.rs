@@ -382,6 +382,10 @@ pub async fn create_team(pool: &SqlitePool, req: CreateTeamRequest) -> Result<Ac
     .await?;
 
     tx.commit().await?;
+    if req.backend_type == "claude" {
+        crate::claude_ingest::ensure_live_ingest(pool.clone()).await?;
+        crate::claude_ingest::notify_member_set_changed();
+    }
     Ok(ActionResponse { ok: true })
 }
 
@@ -419,6 +423,7 @@ pub async fn delete_team(pool: &SqlitePool, req: DeleteTeamRequest) -> Result<Ac
     )
     .await?;
     tx.commit().await?;
+    crate::claude_ingest::notify_member_set_changed();
 
     Ok(ActionResponse { ok: true })
 }
@@ -482,6 +487,10 @@ pub async fn spawn_teammate(
     .await?;
 
     tx.commit().await?;
+    if req.backend_type == "claude" {
+        crate::claude_ingest::ensure_live_ingest(pool.clone()).await?;
+        crate::claude_ingest::notify_member_set_changed();
+    }
     Ok(ActionResponse { ok: true })
 }
 
@@ -531,6 +540,7 @@ pub async fn kill_teammate(pool: &SqlitePool, req: KillTeammateRequest) -> Resul
     .await?;
 
     tx.commit().await?;
+    crate::claude_ingest::notify_member_set_changed();
     Ok(ActionResponse { ok: true })
 }
 
