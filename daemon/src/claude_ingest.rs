@@ -400,8 +400,8 @@ mod tests {
     #[test]
     fn maps_cwd_to_projects_directory_name() {
         assert_eq!(
-            cwd_to_projects_dir("/Users/vic8or/dev/nightshift"),
-            "-Users-vic8or-dev-nightshift"
+            cwd_to_projects_dir("/Users/johndoe/dev/nightshift"),
+            "-Users-johndoe-dev-nightshift"
         );
     }
 
