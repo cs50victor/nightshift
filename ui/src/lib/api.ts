@@ -59,11 +59,11 @@ async function fetchRaw<T = unknown>(url: string): Promise<T> {
 const swrRawFetcher = <T>(url: string): Promise<T> => fetchRaw<T>(url);
 
 export function useGitDiff(path?: string | null) {
-  const key = path ? `/api/git/diff?path=${encodeURIComponent(path)}` : null;
+  const key = path ? `/git/diff?path=${encodeURIComponent(path)}` : null;
   const { data, error, isLoading, mutate } = useSWR<{
     diff: string;
     worktree: string;
-  }>(key, swrRawFetcher);
+  }>(key, swrFetcher);
   return {
     data: data ?? null,
     error: error ?? null,

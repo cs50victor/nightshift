@@ -7,12 +7,14 @@ use axum::routing::{any, get, post};
 use axum::{Json, Router};
 use hyper::body::Incoming;
 use hyper_util::rt::TokioIo;
+use serde::Deserialize;
 use serde_json::json;
 use sqlx::SqlitePool;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::net::{TcpListener, TcpStream};
-use utoipa::ToSchema;
+use tokio::process::Command;
+use utoipa::{IntoParams, ToSchema};
 use utoipa_axum::{router::OpenApiRouter, routes};
 
 const STARTUP_RETRY_WINDOW: Duration = Duration::from_secs(8);
@@ -39,6 +41,18 @@ struct NightshiftProjectPathResponse {
 #[serde(rename_all = "camelCase")]
 struct NightshiftErrorResponse {
     error: String,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+struct NightshiftGitDiffResponse {
+    diff: String,
+    worktree: String,
+}
+
+#[derive(Debug, Deserialize, IntoParams)]
+struct GitDiffQuery {
+    path: Option<String>,
 }
 
 fn json_response(status: StatusCode, body: String) -> Response {
@@ -144,6 +158,119 @@ async fn get_member_tools(
         Err(e) => json_response(
             StatusCode::INTERNAL_SERVER_ERROR,
             json!({"error": format!("{e:#}")}).to_string(),
+        ),
+    }
+}
+
+async fn git_rev_parse(cwd: &str) -> Result<()> {
+    let output = Command::new("git")
+        .args(["rev-parse", "--git-dir"])
+        .current_dir(cwd)
+        .output()
+        .await
+        .context("failed to run git rev-parse")?;
+    if output.status.success() {
+        Ok(())
+    } else {
+        Err(anyhow::anyhow!(
+            "not a git repository: {}",
+            String::from_utf8_lossy(&output.stderr).trim()
+        ))
+    }
+}
+
+async fn git_diff_tracked(cwd: &str) -> Result<String> {
+    let output = Command::new("git")
+        .args(["diff", "HEAD"])
+        .current_dir(cwd)
+        .output()
+        .await
+        .context("failed to run git diff HEAD")?;
+    if !output.status.success() {
+        return Err(anyhow::anyhow!(
+            "git diff HEAD failed: {}",
+            String::from_utf8_lossy(&output.stderr).trim()
+        ));
+    }
+    Ok(String::from_utf8_lossy(&output.stdout).to_string())
+}
+
+async fn git_diff_untracked(cwd: &str) -> Result<String> {
+    let output = Command::new("git")
+        .args(["ls-files", "--others", "--exclude-standard", "-z"])
+        .current_dir(cwd)
+        .output()
+        .await
+        .context("failed to list untracked files")?;
+    if !output.status.success() {
+        return Err(anyhow::anyhow!(
+            "git ls-files failed: {}",
+            String::from_utf8_lossy(&output.stderr).trim()
+        ));
+    }
+
+    let mut combined = String::new();
+    for raw in output.stdout.split(|b| *b == 0).filter(|part| !part.is_empty()) {
+        let file = String::from_utf8_lossy(raw).to_string();
+        let diff_output = Command::new("git")
+            .args(["diff", "--no-index", "--", "/dev/null", &file])
+            .current_dir(cwd)
+            .output()
+            .await
+            .with_context(|| format!("failed to diff untracked file {file}"))?;
+
+        if diff_output.status.success() || diff_output.status.code() == Some(1) {
+            combined.push_str(&String::from_utf8_lossy(&diff_output.stdout));
+        } else {
+            return Err(anyhow::anyhow!(
+                "git diff --no-index failed for {file}: {}",
+                String::from_utf8_lossy(&diff_output.stderr).trim()
+            ));
+        }
+    }
+
+    Ok(combined)
+}
+
+#[utoipa::path(
+    get,
+    path = "/git/diff",
+    operation_id = "daemon.git.diff",
+    params(GitDiffQuery),
+    responses(
+        (status = 200, description = "Git diff for repository", body = NightshiftGitDiffResponse),
+        (status = 400, description = "Missing path query", body = NightshiftErrorResponse),
+        (status = 422, description = "Not a git repository", body = NightshiftErrorResponse),
+        (status = 500, description = "Failed to compute git diff", body = NightshiftErrorResponse)
+    )
+)]
+async fn get_git_diff(
+    axum::extract::Query(query): axum::extract::Query<GitDiffQuery>,
+) -> Response {
+    let Some(cwd) = query.path else {
+        return json_response(
+            StatusCode::BAD_REQUEST,
+            json!({"error": "missing required query parameter: path"}).to_string(),
+        );
+    };
+
+    if let Err(e) = git_rev_parse(&cwd).await {
+        return json_response(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            json!({"error": format!("Not a git repository: {cwd}") , "detail": format!("{e:#}")})
+                .to_string(),
+        );
+    }
+
+    match tokio::try_join!(git_diff_tracked(&cwd), git_diff_untracked(&cwd)) {
+        Ok((tracked, untracked)) => Json(NightshiftGitDiffResponse {
+            diff: format!("{tracked}{untracked}"),
+            worktree: cwd,
+        })
+        .into_response(),
+        Err(e) => json_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            json!({"error": format!("failed to get git diff: {e:#}")}).to_string(),
         ),
     }
 }
@@ -409,6 +536,7 @@ fn api_router() -> Router<AppState> {
         .routes(routes!(get_teams))
         .routes(routes!(get_member_diff))
         .routes(routes!(get_member_tools))
+        .routes(routes!(get_git_diff))
         .split_for_parts();
 
     documented_router
@@ -437,6 +565,7 @@ fn daemon_openapi_json() -> Result<String> {
         .routes(routes!(get_teams))
         .routes(routes!(get_member_diff))
         .routes(routes!(get_member_tools))
+        .routes(routes!(get_git_diff))
         .split_for_parts();
     daemon_openapi
         .to_json()
