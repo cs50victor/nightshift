@@ -1,4 +1,3 @@
-// NOTE(victor): **BEFORE MERGE:** Claude backend activity is not currently ingested into the unified DB. Add transcript (JSONL) ingestion or a live adapter that writes tool_calls/member_status_events for Claude members.
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
