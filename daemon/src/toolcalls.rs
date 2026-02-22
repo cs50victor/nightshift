@@ -1,5 +1,8 @@
 use serde::{Deserialize, Serialize};
+use sqlx::sqlite::SqliteConnectOptions;
+use sqlx::{ConnectOptions, Connection, Row};
 use std::path::Path;
+use std::str::FromStr;
 use utoipa::ToSchema;
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
@@ -106,7 +109,7 @@ fn summarize_input(tool: &str, input: &serde_json::Value) -> String {
 // --- OpenCode SQLite reader ---
 
 #[allow(dead_code)]
-pub fn read_opencode_tools(session_id: &str) -> Vec<ToolCall> {
+pub async fn read_opencode_tools(session_id: &str) -> Vec<ToolCall> {
     let db_path = opencode_db_path();
     let Some(db_path) = db_path else {
         return Vec::new();
@@ -115,10 +118,15 @@ pub fn read_opencode_tools(session_id: &str) -> Vec<ToolCall> {
         return Vec::new();
     }
 
-    let conn = match rusqlite::Connection::open_with_flags(
-        &db_path,
-        rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY | rusqlite::OpenFlags::SQLITE_OPEN_NO_MUTEX,
-    ) {
+    let options = match SqliteConnectOptions::from_str(&format!("sqlite://{}", db_path.display())) {
+        Ok(opts) => opts.read_only(true),
+        Err(e) => {
+            tracing::warn!("failed to build opencode db options: {e}");
+            return Vec::new();
+        }
+    };
+
+    let mut conn = match options.connect().await {
         Ok(c) => c,
         Err(e) => {
             tracing::warn!("failed to open opencode db: {e}");
@@ -126,25 +134,17 @@ pub fn read_opencode_tools(session_id: &str) -> Vec<ToolCall> {
         }
     };
 
-    let mut stmt = match conn.prepare(
+    let rows = match sqlx::query(
         "SELECT data, time_created FROM part \
          WHERE session_id = ?1 \
          AND json_extract(data, '$.type') = 'tool' \
          AND json_extract(data, '$.state.status') IN ('completed', 'error') \
          ORDER BY time_created",
-    ) {
-        Ok(s) => s,
-        Err(e) => {
-            tracing::warn!("failed to prepare opencode query: {e}");
-            return Vec::new();
-        }
-    };
-
-    let rows = match stmt.query_map([session_id], |row| {
-        let data: String = row.get(0)?;
-        let time_created: u64 = row.get(1)?;
-        Ok((data, time_created))
-    }) {
+    )
+    .bind(session_id)
+    .fetch_all(&mut conn)
+    .await
+    {
         Ok(r) => r,
         Err(e) => {
             tracing::warn!("failed to query opencode tools: {e}");
@@ -154,13 +154,22 @@ pub fn read_opencode_tools(session_id: &str) -> Vec<ToolCall> {
 
     let mut calls = Vec::new();
     for row in rows {
-        let Ok((data, time_created)) = row else {
+        let data: String = match row.try_get("data") {
+            Ok(v) => v,
+            Err(_) => continue,
+        };
+        let time_created: i64 = match row.try_get("time_created") {
+            Ok(v) => v,
+            Err(_) => continue,
+        };
+        let Ok(time_created) = u64::try_from(time_created) else {
             continue;
         };
         if let Some(call) = parse_opencode_part(&data, time_created) {
             calls.push(call);
         }
     }
+    let _ = conn.close().await;
     calls
 }
 

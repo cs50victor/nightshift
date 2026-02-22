@@ -314,7 +314,7 @@ pub async fn get_member_tools(
         }
         "opencode" => {
             if let Some(ref sid) = opencode_session_id {
-                crate::toolcalls::read_opencode_tools(sid)
+                crate::toolcalls::read_opencode_tools(sid).await
             } else {
                 Vec::new()
             }
@@ -332,11 +332,11 @@ pub async fn get_member_tools(
     })
 }
 
-fn read_member_tools(member: &MemberState, backend: &str) -> Vec<ToolCall> {
+async fn read_member_tools(member: &MemberState, backend: &str) -> Vec<ToolCall> {
     match backend {
         "opencode" => {
             if let Some(ref sid) = member.config.opencode_session_id {
-                toolcalls::read_opencode_tools(sid)
+                toolcalls::read_opencode_tools(sid).await
             } else {
                 Vec::new()
             }
@@ -799,7 +799,7 @@ async fn archive_team(team: &TeamState) -> TeamArchive {
         }
 
         let backend = member.config.backend_type.as_deref().unwrap_or("claude");
-        let calls = read_member_tools(member, backend);
+        let calls = read_member_tools(member, backend).await;
         if !calls.is_empty() {
             member_tools.insert(name.clone(), calls);
         }
