@@ -391,7 +391,6 @@ pub async fn run() -> Result<()> {
         .unwrap_or_else(|_| data_dir.join("teams.db"));
     let db_pool = crate::db::open(&teams_db_path).await?;
     crate::db::reconcile_on_boot(&db_pool).await?;
-    crate::db::retention_cleanup(&db_pool).await?;
     let db_pool = Arc::new(db_pool);
 
     let start_time = std::time::Instant::now();

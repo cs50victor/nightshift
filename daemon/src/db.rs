@@ -32,6 +32,9 @@ pub async fn open(path: &Path) -> Result<SqlitePool> {
         .connect_with(options)
         .await?;
     run_migrations(&pool).await?;
+    // NOTE(victor): We intentionally keep DB open limited to pragmas + migrations.
+    // Opencode's DB init path stays limited to pragmas + migrations, and we mirror that
+    // startup pattern to keep initialization fast and side-effect free.
     Ok(pool)
 }
 
@@ -58,33 +61,6 @@ pub async fn reconcile_on_boot(pool: &SqlitePool) -> Result<()> {
     .await?;
 
     sqlx::query("UPDATE member_status_current SET alive = 0, state = 'offline'")
-        .execute(&mut *tx)
-        .await?;
-    tx.commit().await?;
-    Ok(())
-}
-
-pub async fn retention_cleanup(pool: &SqlitePool) -> Result<()> {
-    let now = now_ms();
-    let status_days: i64 = std::env::var("NIGHTSHIFT_STATUS_RETENTION_DAYS")
-        .ok()
-        .and_then(|v| v.parse::<i64>().ok())
-        .unwrap_or(30);
-    let activity_days: i64 = std::env::var("NIGHTSHIFT_ACTIVITY_RETENTION_DAYS")
-        .ok()
-        .and_then(|v| v.parse::<i64>().ok())
-        .unwrap_or(90);
-
-    let status_cutoff = now.saturating_sub(status_days.saturating_mul(24 * 60 * 60 * 1000));
-    let activity_cutoff = now.saturating_sub(activity_days.saturating_mul(24 * 60 * 60 * 1000));
-
-    let mut tx = pool.begin().await?;
-    sqlx::query("DELETE FROM member_status_events WHERE created_at_ms < ?")
-        .bind(status_cutoff)
-        .execute(&mut *tx)
-        .await?;
-    sqlx::query("DELETE FROM activity_log WHERE created_at_ms < ?")
-        .bind(activity_cutoff)
         .execute(&mut *tx)
         .await?;
     tx.commit().await?;
