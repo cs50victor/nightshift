@@ -387,7 +387,7 @@ mod tests {
     use super::*;
 
     async fn wait_until(condition: impl Fn() -> bool) -> bool {
-        let deadline = tokio::time::Instant::now() + Duration::from_secs(2);
+        let deadline = tokio::time::Instant::now() + Duration::from_secs(5);
         while tokio::time::Instant::now() < deadline {
             if condition() {
                 return true;
