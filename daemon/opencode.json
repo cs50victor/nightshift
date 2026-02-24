@@ -3,7 +3,7 @@
   "mcp": {
     "claude-teams": {
       "type": "local",
-      "command": ["uvx", "--from", "git+https://github.com/cs50victor/claude-code-teams-mcp", "claude-teams"],
+      "command": ["uv", "run", "--script", "__NIGHTSHIFT_CLAUDE_TEAMS_SCRIPT__"],
       "enabled": true,
       "environment": {
         "USE_TMUX_WINDOWS":"1",
@@ -27,7 +27,11 @@
   },
   "provider": {
     "opencode": {
-      "whitelist": []
+      "whitelist": [
+        "minimax-m2.5",
+        "glm-5",
+        "kimi-k2.5"
+      ]
     },
     "openai": {
       "options": {

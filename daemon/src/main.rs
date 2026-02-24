@@ -1,9 +1,13 @@
+mod claude_ingest;
+mod claude_transcript;
 mod config;
 mod daemon;
+mod db;
+mod diff;
 mod nodes;
 mod openapi;
 mod proxy;
-mod teams;
+mod teams_repo;
 mod toolcalls;
 mod update;
 

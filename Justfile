@@ -57,7 +57,7 @@ build-ui:
 
 [doc('Run all tests')]
 [group('test')]
-test: test-daemon test-server
+test: test-daemon test-server test-ui
 
 [doc('Run daemon tests')]
 [group('test')]
@@ -68,6 +68,11 @@ test-daemon:
 [group('test')]
 test-server:
     cd server && bun test
+
+[doc('Run UI tests')]
+[group('test')]
+test-ui:
+    cd ui && bun test
 
 [doc('Test sprite setup script in Docker')]
 [group('test')]
@@ -137,6 +142,21 @@ setup:
     echo "Installing UI dependencies..."
     cd ui && bun install
     echo "Done."
+
+[doc('Install git hooks for pre-commit and pre-push')]
+[group('setup')]
+hooks-install:
+    pre-commit install --hook-type pre-commit --hook-type pre-push
+
+[doc('Run pre-commit checks across all files')]
+[group('lint')]
+precommit:
+    pre-commit run --all-files
+
+[doc('Run pre-push checks across all files')]
+[group('test')]
+prepush:
+    pre-commit run --hook-stage pre-push --all-files
 
 # --- other ---
 

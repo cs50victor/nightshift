@@ -1,0 +1,44 @@
+fail_fast: true
+
+repos:
+  - repo: local
+    hooks:
+      - id: daemon-fmt-check
+        name: daemon fmt check
+        entry: cargo fmt --manifest-path daemon/Cargo.toml -- --check
+        language: system
+        pass_filenames: false
+        files: ^daemon/
+        stages: [pre-commit]
+
+      - id: ui-lint
+        name: ui lint
+        entry: bash -lc 'cd ui && bun run lint'
+        language: system
+        pass_filenames: false
+        files: ^ui/
+        stages: [pre-commit]
+
+      - id: daemon-ci
+        name: daemon ci
+        entry: bash -lc 'just lint-daemon && just test-daemon'
+        language: system
+        pass_filenames: false
+        files: ^daemon/
+        stages: [pre-push]
+
+      - id: server-ci
+        name: server ci
+        entry: cd server && bun test
+        language: system
+        pass_filenames: false
+        files: ^server/
+        stages: [pre-push]
+
+      - id: ui-ci
+        name: ui ci
+        entry: bash -lc 'cd ui && bun run lint && bun run typecheck'
+        language: system
+        pass_filenames: false
+        files: ^ui/
+        stages: [pre-push]

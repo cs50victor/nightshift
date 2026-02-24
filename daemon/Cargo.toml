@@ -27,15 +27,8 @@ reqwest = { version = "0.12", default-features = false, features = ["json", "rus
 utoipa = { version = "5", features = ["macros"] }
 utoipa-axum = "0.2"
 oas3 = "0.20"
-# NOTE(victor): Do NOT use macos_kqueue feature. kqueue watches file descriptors
-# (inodes), not paths. Atomic saves (write temp + rename) make the watch stale
-# because the fd points to the old inode. FSEvents (the default) watches the
-# directory tree and handles renames correctly.
-# See: https://github.com/notify-rs/notify/issues/365
-#      https://github.com/notify-rs/notify/issues/165
-#      https://github.com/fsnotify/fsnotify/issues/17
-notify = "7"
-rusqlite = { version = "0.32", features = ["bundled"] }
+sqlx = { version = "0.8", features = ["runtime-tokio", "sqlite", "migrate", "macros"] }
+uuid = { version = "1", features = ["v4"] }
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
@@ -45,6 +38,10 @@ tempfile = "3"
 assert_cmd = "2"
 predicates = "3"
 serial_test = "3"
+
+[build-dependencies]
+sqlx = { version = "0.8", features = ["runtime-tokio", "sqlite"] }
+tokio = { version = "1", features = ["rt-multi-thread"] }
 
 [target.'cfg(unix)'.dev-dependencies]
 nix = { version = "0.29", features = ["process", "signal", "fs"] }

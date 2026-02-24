@@ -12,7 +12,7 @@ import { SessionTodos } from "@/components/session-todos";
 import { Badge } from "@/components/ui/badge";
 import { Loader } from "@/components/ui/loader";
 import { useBreadcrumb } from "@/contexts/breadcrumb-context";
-import { useAgentStore } from "@/stores/agent-store";
+import { useConfigStore } from "@/stores/config-store";
 import { type MessageWithParts, useMessageStore } from "@/stores/message-store";
 import { useModelStore } from "@/stores/model-store";
 import { useSessionStore } from "@/stores/session-store";
@@ -40,6 +40,7 @@ function hasVisibleParts(msg: MessageWithParts): boolean {
 }
 
 const EMPTY_MESSAGES: MessageWithParts[] = [];
+const REQUIRED_AGENT_NAME = "team-manager";
 
 export default function SessionPage() {
   const params = useParams();
@@ -48,9 +49,15 @@ export default function SessionPage() {
   const messages =
     useMessageStore((s) => s.messagesBySession[sessionId]) ?? EMPTY_MESSAGES;
   const session = useSessionStore((s) => s.getSession(sessionId));
+  const agents = useConfigStore((s) => s.agents);
   const selectedModel = useModelStore((s) => s.selectedModel);
-  const selectedAgent = useAgentStore((s) => s.getSelectedAgent(sessionId));
   const { setPageTitle } = useBreadcrumb();
+
+  if (!agents.some((agent) => agent.name === REQUIRED_AGENT_NAME)) {
+    throw new Error(
+      `Required agent "${REQUIRED_AGENT_NAME}" is not available in config.`,
+    );
+  }
 
   const visibleMessages = useMemo(
     () => messages.filter(hasVisibleParts),
@@ -152,7 +159,7 @@ export default function SessionPage() {
         await useMessageStore.getState().sendMessage(sessionId, {
           text: messageText,
           model: selectedModel,
-          agent: selectedAgent,
+          agent: REQUIRED_AGENT_NAME,
           attachments,
         });
         useMessageStore
@@ -166,7 +173,7 @@ export default function SessionPage() {
           .removeOptimisticMessage(sessionId, messageId);
       }
     },
-    [sessionId, selectedModel, selectedAgent],
+    [sessionId, selectedModel],
   );
 
   const processQueue = useCallback(async () => {
@@ -270,7 +277,6 @@ export default function SessionPage() {
       <QuestionDialog sessionID={sessionId} />
 
       <ChatInput
-        sessionId={sessionId}
         input={input}
         onInputChange={setInput}
         onSubmit={handleSubmit}
