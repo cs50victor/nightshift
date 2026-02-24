@@ -138,6 +138,21 @@ setup:
     cd ui && bun install
     echo "Done."
 
+[doc('Install git hooks for pre-commit and pre-push')]
+[group('setup')]
+hooks-install:
+    pre-commit install --hook-type pre-commit --hook-type pre-push
+
+[doc('Run pre-commit checks across all files')]
+[group('lint')]
+precommit:
+    pre-commit run --all-files
+
+[doc('Run pre-push checks across all files')]
+[group('test')]
+prepush:
+    pre-commit run --hook-stage pre-push --all-files
+
 # --- other ---
 
 [doc('Remove build artifacts')]
