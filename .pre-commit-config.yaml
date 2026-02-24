@@ -21,7 +21,7 @@ repos:
 
       - id: daemon-ci
         name: daemon ci
-        entry: just lint-daemon && just test-daemon
+        entry: bash -lc 'just lint-daemon && just test-daemon'
         language: system
         pass_filenames: false
         files: ^daemon/
@@ -37,7 +37,7 @@ repos:
 
       - id: ui-ci
         name: ui ci
-        entry: cd ui && bun run lint && bun run typecheck
+        entry: bash -lc 'cd ui && bun run lint && bun run typecheck'
         language: system
         pass_filenames: false
         files: ^ui/

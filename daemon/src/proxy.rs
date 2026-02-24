@@ -210,7 +210,11 @@ async fn git_diff_untracked(cwd: &str) -> Result<String> {
     }
 
     let mut combined = String::new();
-    for raw in output.stdout.split(|b| *b == 0).filter(|part| !part.is_empty()) {
+    for raw in output
+        .stdout
+        .split(|b| *b == 0)
+        .filter(|part| !part.is_empty())
+    {
         let file = String::from_utf8_lossy(raw).to_string();
         let diff_output = Command::new("git")
             .args(["diff", "--no-index", "--", "/dev/null", &file])
@@ -244,9 +248,7 @@ async fn git_diff_untracked(cwd: &str) -> Result<String> {
         (status = 500, description = "Failed to compute git diff", body = NightshiftErrorResponse)
     )
 )]
-async fn get_git_diff(
-    axum::extract::Query(query): axum::extract::Query<GitDiffQuery>,
-) -> Response {
+async fn get_git_diff(axum::extract::Query(query): axum::extract::Query<GitDiffQuery>) -> Response {
     let Some(cwd) = query.path else {
         return json_response(
             StatusCode::BAD_REQUEST,
