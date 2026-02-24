@@ -272,18 +272,15 @@ export function ChatInput({
 
           <div className="flex items-center gap-1 px-2 py-1.5">
             <Menu>
-              <MenuTrigger>
-                <button
-                  type="button"
-                  aria-label="Attach"
-                  className={buttonStyles({
-                    intent: "plain",
-                    size: "sq-xs",
-                    className: "rounded-lg cursor-default",
-                  })}
-                >
-                  <Plus data-slot="icon" className="size-4" />
-                </button>
+              <MenuTrigger
+                aria-label="Attach"
+                className={buttonStyles({
+                  intent: "plain",
+                  size: "sq-xs",
+                  className: "rounded-lg cursor-default",
+                })}
+              >
+                <Plus data-slot="icon" className="size-4" />
               </MenuTrigger>
               <MenuContent placement="top">
                 <MenuItem onAction={() => mediaInputRef.current?.click()}>
