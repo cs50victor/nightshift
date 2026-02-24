@@ -6,8 +6,6 @@
 # ]
 # ///
 
-from __future__ import annotations
-
 # pyright: reportMissingImports=false
 
 import json
@@ -34,6 +32,16 @@ KNOWN_CLIENTS: dict[str, str] = {
     "opencode": "opencode",
 }
 _VALID_BACKENDS = frozenset(KNOWN_CLIENTS.values())
+_MESSAGE_TYPES = frozenset(
+    {
+        "message",
+        "broadcast",
+        "shutdown_request",
+        "shutdown_response",
+        "plan_approval_response",
+    }
+)
+_TASK_STATUSES = frozenset({"pending", "in_progress", "completed", "deleted"})
 
 _SPAWN_TOOL_BASE_DESCRIPTION = (
     "Spawn a new teammate in a tmux pane. The teammate receives its initial "
@@ -300,6 +308,12 @@ def _raise_tool(err: Exception) -> NoReturn:
     raise ToolError(str(err))
 
 
+def _require_choice(name: str, value: str, allowed: frozenset[str]) -> None:
+    if value not in allowed:
+        options = ", ".join(sorted(allowed))
+        raise ToolError(f"Invalid {name}: {value!r}. Expected one of: {options}")
+
+
 @mcp.tool
 def team_create(team_name: str, description: str = "") -> dict:
     """Create a new agent team. Sets up team config and task directories under ~/.claude/.
@@ -356,6 +370,7 @@ def spawn_teammate_tool(
     - explore: Fast agent specialized for exploring codebases."""
     if not os.path.isabs(cwd):
         raise ToolError("cwd is required and must be an absolute path")
+    _require_choice("backend_type", backend_type, _VALID_BACKENDS)
     enabled = ctx.lifespan_context.get("enabled_backends", [])
     if enabled and backend_type not in enabled:
         raise ToolError(f"Backend {backend_type!r} is not enabled. Enabled: {enabled}")
@@ -401,6 +416,7 @@ def send_message(
     Type 'shutdown_request' asks a teammate to shut down (requires recipient; content used as reason).
     Type 'shutdown_response' responds to a shutdown request (requires sender, request_id, approve).
     Type 'plan_approval_response' responds to a plan approval request (requires recipient, request_id, approve)."""
+    _require_choice("type", type, _MESSAGE_TYPES)
     if type == "message" and not recipient:
         raise ToolError("recipient is required for type='message'")
     to_name = None if type == "broadcast" else (recipient or None)
@@ -495,6 +511,7 @@ def task_update(
         "externalTaskId": task_id,
     }
     if status is not None:
+        _require_choice("status", status, _TASK_STATUSES)
         body["status"] = status
     if owner is not None:
         body["ownerName"] = owner

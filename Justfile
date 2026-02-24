@@ -57,7 +57,7 @@ build-ui:
 
 [doc('Run all tests')]
 [group('test')]
-test: test-daemon test-server
+test: test-daemon test-server test-ui
 
 [doc('Run daemon tests')]
 [group('test')]
@@ -68,6 +68,11 @@ test-daemon:
 [group('test')]
 test-server:
     cd server && bun test
+
+[doc('Run UI tests')]
+[group('test')]
+test-ui:
+    cd ui && bun test
 
 [doc('Test sprite setup script in Docker')]
 [group('test')]
