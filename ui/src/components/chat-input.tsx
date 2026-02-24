@@ -12,7 +12,6 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { useRef, useState } from "react";
-import { AgentSelect } from "@/components/agent-select";
 import {
   FileMentionPopover,
   useFileMention,
@@ -44,7 +43,6 @@ export interface Attachment {
 }
 
 interface ChatInputProps {
-  sessionId: string;
   input: string;
   onInputChange: (value: string) => void;
   onSubmit: (e: React.FormEvent, attachments?: Attachment[]) => void;
@@ -55,7 +53,6 @@ const TRIGGER_CLASS =
   "w-auto border-transparent bg-transparent px-2 py-1 text-xs hover:bg-muted rounded-lg shadow-none";
 
 export function ChatInput({
-  sessionId,
   input,
   onInputChange,
   onSubmit,
@@ -294,10 +291,6 @@ export function ChatInput({
               </MenuContent>
             </Menu>
 
-            <AgentSelect
-              sessionId={sessionId}
-              triggerClassName={TRIGGER_CLASS}
-            />
             <ModelSelect triggerClassName={TRIGGER_CLASS} />
 
             <div className="flex-1" />
